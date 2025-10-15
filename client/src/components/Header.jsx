@@ -8,8 +8,7 @@ import { FaHome } from "react-icons/fa";
 import { GiTrophy } from "react-icons/gi";
 import { IoBarChart } from "react-icons/io5";
 import { IoSettingsSharp } from "react-icons/io5";
-
-const ADMIN_PASSWORD = 'CDD'; // Change this to your desired password
+import { authAPI } from '../utils/api';
 
 const Header = () => {
   const location = useLocation();
@@ -77,7 +76,8 @@ const handleAdminClick = async (e) => {
 
   if (password === undefined) return; // user cancelled
 
-  if (password === 'CDD') {
+  try {
+    await authAPI.verifyAdmin(password);
     localStorage.setItem('isAdminAuthed', 'true');
     await Swal.fire({
       icon: 'success',
@@ -87,11 +87,12 @@ const handleAdminClick = async (e) => {
       showConfirmButton: false,
     });
     navigate('/admin');
-  } else {
+  } catch (err) {
+    const message = err.response?.data?.message || 'Incorrect password. Please try again.';
     Swal.fire({
       icon: 'error',
-      title: 'Incorrect password!',
-      text: 'Please try again.',
+      title: 'Access denied',
+      text: message,
     });
   }
 };

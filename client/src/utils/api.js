@@ -56,6 +56,10 @@ export const tracksAPI = {
   verifyPassword: (id, password) => api.post(`/api/tracks/${id}/verify`, { password })
 };
 
+export const authAPI = {
+  verifyAdmin: (password) => api.post('/api/auth/admin', { password })
+};
+
 // Juries
 export const juriesAPI = {
   getAll: (params = {}) => api.get(`/api/juries${buildQuery(params)}`),
