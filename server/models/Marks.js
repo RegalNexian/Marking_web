@@ -3,6 +3,11 @@ const mongoose = require('mongoose');
 const marksSchema = new mongoose.Schema({
   juryName: { type: String, required: true, trim: true },
   teamName: { type: String, required: true, trim: true },
+  track: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Track',
+    required: true
+  },
   criteria: {
     type: Map,      // Allows dynamic keys (any criteria)
     of: Number,     // Each value is a number
@@ -12,6 +17,6 @@ const marksSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Prevent duplicate marks from same jury for same team
-marksSchema.index({ juryName: 1, teamName: 1 }, { unique: true });
+marksSchema.index({ juryName: 1, teamName: 1, track: 1 }, { unique: true });
 
 module.exports = mongoose.model('Marks', marksSchema);

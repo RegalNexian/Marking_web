@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { useEffect, useState } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
 
@@ -36,40 +35,64 @@ api.interceptors.response.use(
 
 // API functions
 
+const buildQuery = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, value);
+    }
+  });
+  const qs = query.toString();
+  return qs ? `?${qs}` : '';
+};
+
+// Tracks
+export const tracksAPI = {
+  getAll: (options = {}) => api.get(`/api/tracks${buildQuery(options)}`),
+  create: (data) => api.post('/api/tracks', data),
+  update: (id, data) => api.put(`/api/tracks/${id}`, data),
+  delete: (id) => api.delete(`/api/tracks/${id}`),
+  getById: (id) => api.get(`/api/tracks/${id}`),
+  verifyPassword: (id, password) => api.post(`/api/tracks/${id}/verify`, { password })
+};
+
 // Juries
 export const juriesAPI = {
-  getAll: () => api.get('/api/juries'),
+  getAll: (params = {}) => api.get(`/api/juries${buildQuery(params)}`),
   create: (data) => api.post('/api/juries', data),
-  getByName: (name) => api.get(`/api/juries/${encodeURIComponent(name)}`),
+  getByName: (name, params = {}) => api.get(`/api/juries/${encodeURIComponent(name)}${buildQuery(params)}`),
   updateStatus: (name, data) => api.put(`/api/juries/${encodeURIComponent(name)}`, data),
+  updateAssignments: (id, data) => api.put(`/api/juries/${id}/assignments`, data),
   delete: (name) => api.delete(`/api/juries/${encodeURIComponent(name)}`),
 };
 
 // Teams
 export const teamsAPI = {
-  getAll: () => api.get('/api/teams'),
+  getAll: (params = {}) => api.get(`/api/teams${buildQuery(params)}`),
   create: (data) => api.post('/api/teams', data),
   update: (id, data) => api.put(`/api/teams/${id}`, data),
   delete: (id) => api.delete(`/api/teams/${id}`),
-  getByName: (name) => api.get(`/api/teams/name/${encodeURIComponent(name)}`),
+  getByName: (name, params = {}) => api.get(`/api/teams/name/${encodeURIComponent(name)}${buildQuery(params)}`),
 };
 
 // Marks
 export const marksAPI = {
-  save: (juryName, data) => api.post(`/api/marks/${encodeURIComponent(juryName)}`, data),
-  getByJury: (juryName) => api.get(`/api/marks/${encodeURIComponent(juryName)}`),
-  getAll: () => api.get('/api/marks/all'),
-  getLeaderboard: () => api.get('/api/marks/leaderboard'),
-  getStatus: () => api.get('/api/marks/status'),
+  save: (trackId, juryName, data) => api.post(`/api/marks/track/${trackId}/jury/${encodeURIComponent(juryName)}`, data),
+  getByJury: (trackId, juryName) => api.get(`/api/marks/track/${trackId}/jury/${encodeURIComponent(juryName)}`),
+  getAll: (params = {}) => api.get(`/api/marks/all${buildQuery(params)}`),
+  getLeaderboard: (params = {}) => api.get(`/api/marks/leaderboard${buildQuery(params)}`),
+  getStatus: (params = {}) => api.get(`/api/marks/status${buildQuery(params)}`),
 };
 
 // Export
 export const exportAPI = {
-  juryExcel: (juryName) => {
-    window.open(`${API_BASE_URL}/api/export/jury/${encodeURIComponent(juryName)}`, '_blank');
+  juryExcel: (trackId, juryName) => {
+    const query = buildQuery({ trackId });
+    window.open(`${API_BASE_URL}/api/export/jury/${encodeURIComponent(juryName)}${query}`, '_blank');
   },
-  leaderboardExcel: () => {
-    window.open(`${API_BASE_URL}/api/export/leaderboard`, '_blank');
+  leaderboardExcel: (trackId) => {
+    const query = buildQuery({ trackId });
+    window.open(`${API_BASE_URL}/api/export/leaderboard${query}`, '_blank');
   },
 };
 

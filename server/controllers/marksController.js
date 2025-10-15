@@ -1,68 +1,137 @@
 const Marks = require('../models/Marks');
 const Jury = require('../models/Jury');
 const Team = require('../models/Team');
+const Track = require('../models/Track');
 const Config = require('../models/Config');
+const {
+  ensureTrackDocument,
+  normalizeTeams,
+  normalizeJuries,
+  normalizeMarks
+} = require('../utils/trackNormalization');
+
+const ensureTrack = async (trackId) => {
+  if (!trackId) {
+    const err = new Error('trackId is required');
+    err.statusCode = 400;
+    throw err;
+  }
+  const track = await ensureTrackDocument(trackId);
+  if (!track) {
+    const err = new Error('Track not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  return track;
+};
+
+const getCriteriaList = async () => {
+  const config = await Config.findOne();
+  return (config?.criteria || []).map((c) => c.toUpperCase());
+};
 
 // -------------------- Save Marks --------------------
 const saveMarks = async (req, res) => {
   try {
-    const { juryName } = req.params;
+    const { juryName, trackId } = req.params;
     const { marks } = req.body;
 
-    const config = await Config.findOne();
-    const criteriaList = (config.criteria || []).map(c => c.toUpperCase());
+    await normalizeTeams();
+    await normalizeJuries();
 
-    await Marks.deleteMany({ juryName });
+    const track = await ensureTrack(trackId);
 
-    const savedMarks = await Marks.insertMany(
-      marks.map(mark => {
-        // Convert keys to ALL CAPS for matching
-        const markCriteria = {};
-        Object.keys(mark.criteria).forEach(key => {
-          markCriteria[key.toUpperCase()] = mark.criteria[key];
-        });
+    const jury = await Jury.findOne({ name: juryName });
+    if (!jury) {
+      return res.status(404).json({ success: false, message: 'Jury not found' });
+    }
 
-        // Only keep marks for current criteria
-        const filteredCriteria = {};
-        for (const criterion of criteriaList) {
-          filteredCriteria[criterion] = markCriteria[criterion] ?? 0;
-        }
-        return {
-          juryName,
-          teamName: mark.teamName,
-          criteria: filteredCriteria,
-          total: Object.values(filteredCriteria).reduce((sum, v) => sum + (v || 0), 0)
-        };
-      })
+    const assignment = jury.assignments.find(
+      (item) => item.track.toString() === track._id.toString()
     );
 
-    await Jury.findOneAndUpdate(
-      { name: juryName },
-      { hasSubmitted: true, paused: false, submittedAt: new Date() },
-      { upsert: true }
-    );
+    if (!assignment) {
+      return res.status(403).json({ success: false, message: 'Jury is not assigned to this track' });
+    }
+
+    const teams = await Team.find({ track: track._id });
+    const teamNames = new Set(teams.map((team) => team.name));
+
+    const criteriaList = await getCriteriaList();
+
+    await Marks.deleteMany({ juryName, track: track._id });
+
+    const docs = marks.map((mark) => {
+      if (!teamNames.has(mark.teamName)) {
+        throw new Error(`Team ${mark.teamName} does not belong to selected track`);
+      }
+
+      const markCriteria = {};
+      Object.keys(mark.criteria || {}).forEach((key) => {
+        markCriteria[key.toUpperCase()] = mark.criteria[key];
+      });
+
+      const filteredCriteria = {};
+      criteriaList.forEach((criterion) => {
+        filteredCriteria[criterion] = markCriteria[criterion] ?? 0;
+      });
+
+      return {
+        juryName,
+        teamName: mark.teamName,
+        track: track._id,
+        criteria: filteredCriteria,
+        total: Object.values(filteredCriteria).reduce((sum, value) => sum + (value || 0), 0)
+      };
+    });
+
+    await Marks.insertMany(docs);
+
+    assignment.hasSubmitted = true;
+    assignment.paused = false;
+    assignment.submittedAt = new Date();
+    await jury.save();
 
     res.json({ success: true, message: 'Marks saved successfully.' });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    const status = error.statusCode || 400;
+    res.status(status).json({ success: false, message: error.message });
   }
 };
 
 // -------------------- Get Marks By Jury --------------------
 const getMarksByJury = async (req, res) => {
   try {
-    const { juryName } = req.params;
-    const marks = await Marks.find({ juryName });
-    console.log("Fetched marks:", marks);
+    const { juryName, trackId } = req.params;
 
-    const config = await Config.findOne();
-    const criteriaList = (config.criteria || []).map(c => c.toUpperCase());
+    await normalizeTeams();
+    await normalizeJuries();
+    await normalizeMarks();
 
-    const filteredMarks = marks.map(mark => {
+    const track = await ensureTrack(trackId);
+
+    const jury = await Jury.findOne({ name: juryName });
+    if (!jury) {
+      return res.status(404).json({ message: 'Jury not found' });
+    }
+
+    const assignment = jury.assignments.find(
+      (item) => item.track.toString() === track._id.toString()
+    );
+
+    if (!assignment) {
+      return res.status(403).json({ message: 'Jury is not assigned to this track' });
+    }
+
+    const marks = await Marks.find({ juryName, track: track._id });
+    const criteriaList = await getCriteriaList();
+
+    const filteredMarks = marks.map((mark) => {
       const filteredCriteria = {};
-      for (const criterion of criteriaList) {
+      criteriaList.forEach((criterion) => {
         filteredCriteria[criterion] = mark.criteria.get(criterion) ?? 0;
-      }
+      });
+
       return {
         ...mark.toObject(),
         criteria: filteredCriteria,
@@ -70,30 +139,61 @@ const getMarksByJury = async (req, res) => {
       };
     });
 
-    console.log("Filtered marks:", filteredMarks);
-    res.json(filteredMarks);
-
+    res.json({
+      marks: filteredMarks,
+      assignment: {
+        hasSubmitted: assignment.hasSubmitted,
+        paused: assignment.paused,
+        submittedAt: assignment.submittedAt
+      }
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    const status = err.statusCode || 500;
+    res.status(status).json({ error: err.message || 'Server error' });
   }
 };
 
+const resolveTrackFilter = async (trackId) => {
+  if (trackId) {
+    const track = await ensureTrack(trackId);
+    return track;
+  }
+
+  const activeTrack = await Track.findOne({ isActive: true }).sort({ createdAt: -1 });
+  if (activeTrack) {
+    return activeTrack;
+  }
+
+  return await Track.findOne().sort({ createdAt: -1 });
+};
 
 // -------------------- Leaderboard --------------------
 const getLeaderboard = async (req, res) => {
   try {
-    const teams = await Team.find({});
-    const juries = await Jury.find({});
-    const allMarks = await Marks.find({});
+    const { trackId } = req.query;
+    await normalizeTeams();
+    await normalizeJuries();
+    await normalizeMarks();
 
-    const leaderboard = teams.map(team => {
+    const track = await resolveTrackFilter(trackId);
+
+    if (!track) {
+      return res.json({ leaderboard: [], juries: [], track: null });
+    }
+
+    const [teams, juries, allMarks] = await Promise.all([
+      Team.find({ track: track._id }),
+      Jury.find({ 'assignments.track': track._id }),
+      Marks.find({ track: track._id })
+    ]);
+
+    const leaderboard = teams.map((team) => {
       let totalScore = 0;
       const juryTotals = {};
 
-      juries.forEach(jury => {
+      juries.forEach((jury) => {
         const juryMarks = allMarks.find(
-          mark => mark.juryName === jury.name && mark.teamName === team.name
+          (mark) => mark.juryName === jury.name && mark.teamName === team.name
         );
         const score = juryMarks ? juryMarks.total : 0;
         juryTotals[jury.name] = score;
@@ -108,10 +208,8 @@ const getLeaderboard = async (req, res) => {
       };
     });
 
-    // Sort descending by grand total
     leaderboard.sort((a, b) => b.grandTotal - a.grandTotal);
 
-    // Add ranks
     const rankedLeaderboard = leaderboard.map((team, index) => ({
       rank: index + 1,
       ...team
@@ -119,39 +217,79 @@ const getLeaderboard = async (req, res) => {
 
     res.json({
       leaderboard: rankedLeaderboard,
-      juries: juries.map(j => j.name)
+      juries: juries.map((jury) => jury.name),
+      track
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message });
   }
 };
 
 // -------------------- Get Submission Status --------------------
 const getSubmissionStatus = async (req, res) => {
   try {
-    const juries = await Jury.find({});
-    const statusData = juries.map(jury => ({
-      juryName: jury.name,
-      status: jury.hasSubmitted ? 'Submitted' : jury.paused ? 'Paused' : 'Pending',
-      submittedAt: jury.submittedAt
-    }));
-    res.json(statusData);
+    const { trackId } = req.query;
+
+    await normalizeTeams();
+    await normalizeJuries();
+    await normalizeMarks();
+
+    const track = trackId ? await ensureTrack(trackId) : null;
+
+    const juries = await Jury.find(track ? { 'assignments.track': track._id } : {}).populate('assignments.track');
+
+    const rows = [];
+
+    juries.forEach((jury) => {
+      jury.assignments.forEach((assignment) => {
+        const assignmentTrack = assignment.track;
+
+        if (!assignmentTrack || !assignmentTrack._id) {
+          return;
+        }
+
+        if (track && assignmentTrack._id.toString() !== track._id.toString()) {
+          return;
+        }
+
+        rows.push({
+          trackId: assignmentTrack._id,
+          trackName: assignmentTrack.name,
+          juryName: jury.name,
+          status: assignment.hasSubmitted ? 'Submitted' : assignment.paused ? 'Paused' : 'Pending',
+          submittedAt: assignment.submittedAt
+        });
+      });
+    });
+
+    res.json(rows);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message });
   }
 };
 
 // -------------------- Get All Marks --------------------
 const getAllMarks = async (req, res) => {
   try {
-    const marks = await Marks.find({});
+    const { trackId } = req.query;
+    const filter = {};
+
+    await normalizeMarks();
+
+    if (trackId) {
+      const track = await ensureTrack(trackId);
+      filter.track = track._id;
+    }
+    const marks = await Marks.find(filter);
     res.json(marks);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message });
   }
 };
 
-// -------------------- Export --------------------
 module.exports = {
   saveMarks,
   getMarksByJury,

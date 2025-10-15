@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { marksAPI } from '../utils/api';
+import { marksAPI, tracksAPI } from '../utils/api';
 import StatusBoard from '../components/StatusBoard';
 
 const StatusPage = () => {
@@ -7,19 +7,41 @@ const StatusPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [tracks, setTracks] = useState([]);
+  const [selectedTrackId, setSelectedTrackId] = useState('');
 
   useEffect(() => {
-    fetchStatus();
-    
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(fetchStatus, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchInitial();
 
-  const fetchStatus = async () => {
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(() => fetchStatus(selectedTrackId, true), 10000);
+    return () => clearInterval(interval);
+  }, [selectedTrackId]);
+
+  const fetchInitial = async () => {
     try {
-      if (!refreshing) setLoading(true);
-      const response = await marksAPI.getStatus();
+      setLoading(true);
+      const [trackResponse] = await Promise.all([
+        tracksAPI.getAll(),
+      ]);
+      setTracks(trackResponse.data);
+      const defaultTrack = trackResponse.data.find(track => track.isActive) || trackResponse.data[0];
+      const defaultId = defaultTrack?._id || '';
+      setSelectedTrackId(defaultId);
+      await fetchStatus(defaultId, false);
+    } catch (err) {
+      console.error('Failed to load status data:', err);
+      setError('Failed to load status data. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const fetchStatus = async (trackId, isAuto = false) => {
+    try {
+      if (!isAuto) {
+        setLoading(true);
+      }
+      const response = await marksAPI.getStatus(trackId ? { trackId } : {});
       setStatusData(response.data);
       setError('');
     } catch (error) {
@@ -33,7 +55,12 @@ const StatusPage = () => {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchStatus();
+    fetchStatus(selectedTrackId, false);
+  };
+
+  const handleTrackChange = async (value) => {
+    setSelectedTrackId(value);
+    await fetchStatus(value, false);
   };
 
   const getStatusCounts = () => {
@@ -79,11 +106,23 @@ const StatusPage = () => {
                 📊 Jury Submission Status
               </h1>
               <p className="text-gray-600">
-                Real-time tracking of jury marking progress
+                Real-time tracking of jury marking progress per track
               </p>
             </div>
             
             <div className="flex items-center space-x-3 mt-4 md:mt-0">
+              <div>
+                <select
+                  value={selectedTrackId}
+                  onChange={(e) => handleTrackChange(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {tracks.length === 0 && <option value="">All Tracks</option>}
+                  {tracks.map(track => (
+                    <option key={track._id} value={track._id}>{track.name}</option>
+                  ))}
+                </select>
+              </div>
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}

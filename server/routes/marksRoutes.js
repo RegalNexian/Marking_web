@@ -18,10 +18,10 @@ router.get('/status', getSubmissionStatus);
 // GET /api/marks/all - Get all marks
 router.get('/all', getAllMarks);
 
-// POST /api/marks/:juryName - Save marks for a jury
-router.post('/:juryName', saveMarks);
+// POST /api/marks/track/:trackId/jury/:juryName - Save marks for a jury within a track
+router.post('/track/:trackId/jury/:juryName', saveMarks);
 
-// GET /api/marks/:juryName - Get marks for a specific jury
-router.get('/:juryName', getMarksByJury);
+// GET /api/marks/track/:trackId/jury/:juryName - Get marks for a specific jury within a track
+router.get('/track/:trackId/jury/:juryName', getMarksByJury);
 
 module.exports = router;

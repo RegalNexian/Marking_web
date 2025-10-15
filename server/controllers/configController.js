@@ -1,6 +1,7 @@
 const Jury = require('../models/Jury');
 const Team = require('../models/Team');
 const Marks = require('../models/Marks');
+const Track = require('../models/Track');
 const Config = require('../models/Config');
 
 
@@ -29,6 +30,7 @@ const updateConfig = async (req, res) => {
   try {
     const {
       criteriaList,
+      criteria,
       maxMarksPerCriterion,
       competitionName,
       collegeName,
@@ -38,7 +40,10 @@ const updateConfig = async (req, res) => {
     let config = await Config.findOne({});
     if (!config) config = new Config();
 
-    if (criteriaList) config.criteriaList = criteriaList;
+    const resolvedCriteria = Array.isArray(criteriaList) ? criteriaList : Array.isArray(criteria) ? criteria : null;
+    if (resolvedCriteria) {
+      config.criteria = resolvedCriteria.map((item) => String(item).trim().toUpperCase()).filter(Boolean);
+    }
     if (maxMarksPerCriterion !== undefined)
       config.maxMarksPerCriterion = maxMarksPerCriterion;
     if (competitionName) config.competitionName = competitionName;
@@ -97,6 +102,7 @@ const resetAll = async (req, res) => {
     await Jury.deleteMany({});
     await Team.deleteMany({});
     await Marks.deleteMany({});
+    await Track.deleteMany({});
     // Optionally, reset criteria and config fields
     const config = await Config.findOne();
     if (config) {

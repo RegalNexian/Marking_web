@@ -3,17 +3,62 @@ const Marks = require('../models/Marks');
 const Team = require('../models/Team');
 const Jury = require('../models/Jury');
 const Config = require('../models/Config');
+const {
+  ensureTrackDocument,
+  normalizeTeams,
+  normalizeJuries,
+  normalizeMarks
+} = require('../utils/trackNormalization');
+
+const ensureTrack = async (trackId) => {
+  if (!trackId) {
+    const err = new Error('trackId is required');
+    err.statusCode = 400;
+    throw err;
+  }
+  const track = await ensureTrackDocument(trackId);
+  if (!track) {
+    const err = new Error('Track not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  return track;
+};
 
 // Export jury-wise Excel file
 const exportJuryExcel = async (req, res) => {
   try {
     const { juryName } = req.params;
-    const marks = await Marks.find({ juryName });
-    const teams = await Team.find({});
+    const { trackId } = req.query;
+
+    await normalizeTeams();
+    await normalizeJuries();
+    await normalizeMarks();
+
+    const track = await ensureTrack(trackId);
+
+    const [marks, teams, jury] = await Promise.all([
+      Marks.find({ juryName, track: track._id }),
+      Team.find({ track: track._id }),
+      Jury.findOne({ name: juryName })
+    ]);
+
+    if (!jury) {
+      return res.status(404).json({ message: 'Jury not found' });
+    }
+
+    const isAssigned = jury.assignments.some(
+      (assignment) => assignment.track.toString() === track._id.toString()
+    );
+
+    if (!isAssigned) {
+      return res.status(403).json({ message: 'Jury is not assigned to this track' });
+    }
+
     const config = await Config.findOne({}) || new Config();
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(`${juryName}_Marks`);
+    const worksheet = workbook.addWorksheet(`${juryName}_${track.slug || trackId}`);
 
     // Use dynamic criteria
     const criteriaList = config.criteria || [];
@@ -74,24 +119,33 @@ const exportJuryExcel = async (req, res) => {
     });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=${juryName}_Marks.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=${juryName}_${track.slug || trackId}_Marks.xlsx`);
 
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
 
 // Export leaderboard Excel file
 const exportLeaderboardExcel = async (req, res) => {
   try {
-    const teams = await Team.find({});
-    const juries = await Jury.find({});
-    const allMarks = await Marks.find({});
+    const { trackId } = req.query;
+    await normalizeTeams();
+    await normalizeJuries();
+    await normalizeMarks();
+
+    const track = await ensureTrack(trackId);
+
+    const [teams, juries, allMarks] = await Promise.all([
+      Team.find({ track: track._id }),
+      Jury.find({ 'assignments.track': track._id }),
+      Marks.find({ track: track._id })
+    ]);
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Final_Leaderboard');
+    const worksheet = workbook.addWorksheet(`Leaderboard_${track.slug || trackId}`);
 
     // Create leaderboard data
     const leaderboard = teams.map(team => {
@@ -173,12 +227,12 @@ const exportLeaderboardExcel = async (req, res) => {
     });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=Final_Leaderboard.xlsx');
+    res.setHeader('Content-Disposition', `attachment; filename=Leaderboard_${track.slug || trackId}.xlsx`);
 
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
 

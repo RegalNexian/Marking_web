@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { teamsAPI, marksAPI, juriesAPI, getCriteria } from '../utils/api';
+import { teamsAPI, marksAPI, juriesAPI, getCriteria, tracksAPI } from '../utils/api';
 import MarkingTable from '../components/MarkingTable';
 import toast from 'react-hot-toast';
 
 const MarkingPage = () => {
-  const { juryName } = useParams();
+  const { juryName, trackId } = useParams();
   const navigate = useNavigate();
   const [teams, setTeams] = useState([]);
   const [marks, setMarks] = useState([]);
@@ -15,12 +15,19 @@ const MarkingPage = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [track, setTrack] = useState(null);
+  const [assignment, setAssignment] = useState(null);
+
+  const storageKey = useMemo(() => {
+    if (!juryName || !trackId) return null;
+    return `marks_${juryName}_${trackId}`;
+  }, [juryName, trackId]);
 
   useEffect(() => {
-    if (juryName) {
+    if (juryName && trackId) {
       fetchData();
     }
-  }, [juryName]);
+  }, [juryName, trackId]);
 
   useEffect(() => {
     getCriteria().then(res => setCriteria(res.data));
@@ -28,27 +35,39 @@ const MarkingPage = () => {
 
   const fetchData = async () => {
     try {
+      if (!trackId) {
+        setError('Track missing. Please select your track from the home page.');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
-      const [teamsResponse, marksResponse, juryResponse] = await Promise.all([
-        teamsAPI.getAll(),
-        marksAPI.getByJury(juryName),
-        juriesAPI.getByName(juryName)
+      const [teamsResponse, marksResponse, juryResponse, trackResponse] = await Promise.all([
+        teamsAPI.getAll({ trackId }),
+        marksAPI.getByJury(trackId, juryName),
+        juriesAPI.getByName(juryName, { trackId }),
+        tracksAPI.getById(trackId)
       ]);
 
       setTeams(teamsResponse.data);
-      setMarks(marksResponse.data);
-      setIsPaused(juryResponse.data?.paused || false);
-      setHasSubmitted(juryResponse.data?.hasSubmitted || false);
-      
-      // Load from localStorage if no data from server
-      if (marksResponse.data.length === 0) {
-        const savedMarks = localStorage.getItem(`marks_${juryName}`);
+      setTrack(trackResponse.data);
+
+      const serverMarks = marksResponse.data?.marks || [];
+      setMarks(serverMarks);
+
+      const assignmentData = marksResponse.data?.assignment || juryResponse.data?.assignment || null;
+      setAssignment(assignmentData);
+      setIsPaused(Boolean(assignmentData?.paused));
+      setHasSubmitted(Boolean(assignmentData?.hasSubmitted));
+
+      if (serverMarks.length === 0 && storageKey) {
+        const savedMarks = localStorage.getItem(storageKey);
         if (savedMarks) {
           setMarks(JSON.parse(savedMarks));
         }
       }
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
+    } catch (err) {
+      console.error('Failed to fetch data:', err);
       setError('Failed to load data. Please try again.');
     } finally {
       setLoading(false);
@@ -58,22 +77,22 @@ const MarkingPage = () => {
   const handleSave = async (marksData, isSubmit = false) => {
     try {
       setSaving(true);
-      console.log("Submitting marks:", marksData);
-      await marksAPI.save(juryName, { marks: marksData });
-      
+      await marksAPI.save(trackId, juryName, { marks: marksData });
+
       if (isSubmit) {
         setHasSubmitted(true);
         setIsPaused(false);
-        localStorage.removeItem(`marks_${juryName}`);
+        if (storageKey) {
+          localStorage.removeItem(storageKey);
+        }
         toast.success('Marks submitted successfully!');
         navigate('/');
-      } else {
-        // Auto-save to localStorage
-        localStorage.setItem(`marks_${juryName}`, JSON.stringify(marksData));
+      } else if (storageKey) {
+        localStorage.setItem(storageKey, JSON.stringify(marksData));
       }
-    } catch (error) {
-      console.error('Failed to save marks:', error);
-      toast.error('Failed to save marks. Please try again.');
+    } catch (err) {
+      console.error('Failed to save marks:', err);
+      toast.error(err.response?.data?.message || 'Failed to save marks. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -81,23 +100,40 @@ const MarkingPage = () => {
 
   const handlePause = async () => {
     try {
-      await juriesAPI.updateStatus(juryName, { paused: true });
+      await juriesAPI.updateStatus(juryName, { trackId, paused: true });
       setIsPaused(true);
-    } catch (error) {
-      console.error('Failed to pause:', error);
+    } catch (err) {
+      console.error('Failed to pause:', err);
       toast.error('Failed to pause. Please try again.');
     }
   };
 
   const handleResume = async () => {
     try {
-      await juriesAPI.updateStatus(juryName, { paused: false });
+      await juriesAPI.updateStatus(juryName, { trackId, paused: false });
       setIsPaused(false);
-    } catch (error) {
-      console.error('Failed to resume:', error);
+    } catch (err) {
+      console.error('Failed to resume:', err);
       toast.error('Failed to resume. Please try again.');
     }
   };
+
+  if (!trackId) {
+    return (
+      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow p-8 text-center">
+        <h1 className="text-2xl font-bold text-gray-800 mb-3">Track Selection Required</h1>
+        <p className="text-gray-600 mb-6">
+          The marking interface now requires a track context. Please return to the home page and choose your assigned track.
+        </p>
+        <button
+          onClick={() => navigate('/')}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg"
+        >
+          Go to Home
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -130,11 +166,17 @@ const MarkingPage = () => {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
               Marking Panel — Jury {juryName}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 mb-1">
+              Track: <span className="font-medium text-gray-800">{track?.name || '—'}</span>
+            </p>
+            {track?.eventName && (
+              <p className="text-sm text-gray-500">Event: {track.eventName}</p>
+            )}
+            <p className="text-gray-600 mt-1">
               {hasSubmitted ? 'Marking completed and submitted' : 'Mark all teams based on the given criteria'}
             </p>
           </div>
-          
+
           <div className="flex items-center space-x-3 mt-4 md:mt-0">
             {hasSubmitted ? (
               <div className="flex items-center text-green-600">
@@ -169,10 +211,31 @@ const MarkingPage = () => {
           </div>
         </div>
 
+        {assignment && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-600 font-semibold">Status</p>
+              <p className="text-lg font-bold text-blue-800">
+                {hasSubmitted ? 'Submitted' : isPaused ? 'Paused' : 'In Progress'}
+              </p>
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <p className="text-sm text-gray-600 font-semibold">Last Update</p>
+              <p className="text-lg font-semibold text-gray-800">
+                {assignment.submittedAt ? new Date(assignment.submittedAt).toLocaleString() : '—'}
+              </p>
+            </div>
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <p className="text-sm text-purple-600 font-semibold">Teams in Track</p>
+              <p className="text-lg font-semibold text-purple-800">{teams.length}</p>
+            </div>
+          </div>
+        )}
+
         {hasSubmitted && (
           <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6">
             <p className="text-green-800">
-              <strong>Submitted:</strong> Your marks have been successfully submitted. 
+              <strong>Submitted:</strong> Your marks have been successfully submitted.
               You can still view the results but cannot make changes.
             </p>
           </div>
@@ -193,7 +256,9 @@ const MarkingPage = () => {
           disabled={isPaused || hasSubmitted}
           saving={saving}
           juryName={juryName}
+          trackId={trackId}
           criteria={criteria}
+          storageKey={storageKey}
         />
       </div>
     </div>

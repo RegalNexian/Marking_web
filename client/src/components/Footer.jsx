@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import Rabindra from "../assets/Rabindra.jpg"; // Your profile image
 // import baibhab from "../assets/baibhab.jpg"; // Removed unused image
-import cdd_logo from '../assets/cdd_logo.png'; // Assuming you have a club logo
 
 // The developers array now contains only your single profile
 const developers = [
@@ -81,14 +80,14 @@ const Footer = () => {
       {/* Contributor Modal (Profile Card) */}
       <AnimatePresence>
         {showModal && (
-          <motion.div
+          <Motion.div
             className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={handleCloseModal} // Close modal when clicking outside
           >
-            <motion.div
+            <Motion.div
               className="bg-gray-800 rounded-xl p-8 text-center max-w-sm w-full shadow-2xl relative"
               initial={{ scale: 0.8, opacity: 0, y: 50 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -128,8 +127,8 @@ const Footer = () => {
               >
                 Close
               </button>
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </footer>

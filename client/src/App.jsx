@@ -18,6 +18,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/jury/:juryName" element={<MarkingPage />} />
+            <Route path="/jury/:juryName/track/:trackId" element={<MarkingPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/status" element={<StatusPage />} />
             <Route path="/admin" element={<AdminPage />} />

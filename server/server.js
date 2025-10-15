@@ -13,14 +13,18 @@ connectDB();
 
 // ✅ CORS configuration
 const allowedOrigins = [
-  'http://localhost:5173',                // Local frontend
-  'https://marking-client.vercel.app' ,
+  'http://localhost:5173',
+  'https://marking-client.vercel.app',
   'https://jury-one.vercel.app'
 ];
 
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      origin.startsWith('http://localhost:')
+    ) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -59,9 +63,11 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// // ❌ No app.listen() here for Vercel
-// app.listen(process.env.PORT || 5000, () => {
-//   console.log(`Server running on port ${process.env.PORT || 5000}`);
-// });
+if (require.main === module) {
+  const port = process.env.PORT || 5000;
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
 
 module.exports = app; // Export app for serverless deployment

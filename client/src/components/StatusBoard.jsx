@@ -34,6 +34,9 @@ const StatusBoard = ({ statusData }) => {
         <thead className="bg-gray-50">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Track
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Jury Name
             </th>
             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -49,7 +52,10 @@ const StatusBoard = ({ statusData }) => {
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {statusData.map((item, index) => (
-            <tr key={item.juryName} className={index % 2 === 0 ? 'bg-white' : getRowColor(item.status)}>
+            <tr key={`${item.trackId}-${item.juryName}`} className={index % 2 === 0 ? 'bg-white' : getRowColor(item.status)}>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {item.trackName || '—'}
+              </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
                   <div className="text-2xl mr-3">👨‍⚖️</div>

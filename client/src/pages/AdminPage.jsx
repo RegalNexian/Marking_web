@@ -7,6 +7,7 @@ import {
   getCriteria,
   addCriteria,
   removeCriteria,
+  tracksAPI,
 } from "../utils/api";
 import AdminPanel from "../components/AdminPanel";
 import { useNavigate } from "react-router-dom";
@@ -22,6 +23,8 @@ const AdminPage = () => {
   const [error, setError] = useState("");
   const [criteria, setCriteria] = useState([]);
   const [newCriteria, setNewCriteria] = useState("");
+  const [tracks, setTracks] = useState([]);
+  const [exportTrackId, setExportTrackId] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -62,14 +65,20 @@ const AdminPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [juriesResponse, teamsResponse, configResponse] = await Promise.all([
+      const [juriesResponse, teamsResponse, configResponse, tracksResponse] = await Promise.all([
         juriesAPI.getAll(),
         teamsAPI.getAll(),
         configAPI.get(),
+        tracksAPI.getAll(),
       ]);
       setJuries(juriesResponse.data);
       setTeams(teamsResponse.data);
       setConfig(configResponse.data);
+      setTracks(tracksResponse.data);
+      if (!exportTrackId && tracksResponse.data.length > 0) {
+        const defaultTrack = tracksResponse.data.find(track => track.isActive) || tracksResponse.data[0];
+        setExportTrackId(defaultTrack?._id || "");
+      }
     } catch (error) {
       console.error("Failed to fetch data:", error);
       setError("Failed to load admin data. Please try again.");
@@ -100,24 +109,27 @@ const AdminPage = () => {
   };
 
   const getDashboardStats = () => {
-    const submittedJuries = juries.filter((j) => j.hasSubmitted).length;
-    const pausedJuries = juries.filter((j) => j.paused && !j.hasSubmitted).length;
-    const pendingJuries = juries.length - submittedJuries - pausedJuries;
+    const assignments = juries.flatMap((jury) => jury.assignments || []);
+    const submittedAssignments = assignments.filter((assignment) => assignment.hasSubmitted).length;
+    const pausedAssignments = assignments.filter((assignment) => !assignment.hasSubmitted && assignment.paused).length;
+    const pendingAssignments = assignments.length - submittedAssignments - pausedAssignments;
+
     return {
       totalJuries: juries.length,
       totalTeams: teams.length,
-      submitted: submittedJuries,
-      paused: pausedJuries,
-      pending: pendingJuries,
+      submitted: submittedAssignments,
+      paused: pausedAssignments,
+      pending: pendingAssignments,
       completionRate:
-        juries.length > 0
-          ? Math.round((submittedJuries / juries.length) * 100)
+        assignments.length > 0
+          ? Math.round((submittedAssignments / assignments.length) * 100)
           : 0,
     };
   };
 
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: "📊" },
+    { id: "tracks", label: "Tracks", icon: "🎯" },
     { id: "juries", label: "Manage Juries", icon: "👨‍⚖️" },
     { id: "teams", label: "Manage Teams", icon: "👥" },
     { id: "config", label: "Configuration", icon: "⚙️" },
@@ -259,15 +271,15 @@ const AdminPage = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-4 bg-green-50 rounded-lg text-center">
                   <div className="text-2xl font-bold text-green-600">{stats.submitted}</div>
-                  <div className="text-sm text-gray-600">✅ Submitted</div>
+                  <div className="text-sm text-gray-600">✅ Assignments Submitted</div>
                 </div>
                 <div className="p-4 bg-orange-50 rounded-lg text-center">
                   <div className="text-2xl font-bold text-orange-600">{stats.paused}</div>
-                  <div className="text-sm text-gray-600">⏸️ Paused</div>
+                  <div className="text-sm text-gray-600">⏸️ Assignments Paused</div>
                 </div>
                 <div className="p-4 bg-red-50 rounded-lg text-center">
                   <div className="text-2xl font-bold text-red-600">{stats.pending}</div>
-                  <div className="text-sm text-gray-600">❌ Pending</div>
+                  <div className="text-sm text-gray-600">❌ Assignments Pending</div>
                 </div>
               </div>
             </div>
@@ -322,11 +334,34 @@ const AdminPage = () => {
           )}
 
           {/* Other Tabs */}
-           {activeTab === 'exports' && (
+          {activeTab === 'exports' && (
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">
                 Export Options
               </h2>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Track
+                </label>
+                <select
+                  value={exportTrackId}
+                  onChange={(e) => setExportTrackId(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-72"
+                >
+                  <option value="" disabled>
+                    {tracks.length === 0 ? 'No tracks available' : 'Choose track'}
+                  </option>
+                  {tracks.map((track) => (
+                    <option key={track._id} value={track._id}>
+                      {track.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  Exports are generated per track to ensure accurate team and jury mappings.
+                </p>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="p-6 border border-gray-200 rounded-lg">
@@ -335,8 +370,9 @@ const AdminPage = () => {
                     Export the current leaderboard with all team rankings and scores.
                   </p>
                   <button
-                    onClick={() => exportAPI.leaderboardExcel()}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out w-full"
+                    onClick={() => exportAPI.leaderboardExcel(exportTrackId)}
+                    disabled={!exportTrackId}
+                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out ${!exportTrackId ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Download Leaderboard Excel
                   </button>
@@ -351,8 +387,9 @@ const AdminPage = () => {
                     {juries.map((jury) => (
                       <button
                         key={jury._id}
-                        onClick={() => exportAPI.juryExcel(jury.name)}
-                        className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out w-full text-left"
+                        onClick={() => exportAPI.juryExcel(exportTrackId, jury.name)}
+                        disabled={!exportTrackId}
+                        className={`bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out w-full text-left ${!exportTrackId ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         📄 {jury.name} Report
                       </button>
@@ -362,12 +399,13 @@ const AdminPage = () => {
               </div>
             </div>
           )}
-          {["exports", "teams", "config", "juries"].includes(activeTab) && (
+          {["exports", "teams", "config", "juries", "tracks"].includes(activeTab) && (
             <AdminPanel
               activeTab={activeTab}
               juries={juries}
               teams={teams}
               config={config}
+              tracks={tracks}
               onDataUpdate={fetchData}
             />
           )}
