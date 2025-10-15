@@ -156,12 +156,16 @@ const Home = () => {
     resetSelectionState();
   };
 
-  const handleTrackChange = (event) => {
-    const value = event.target.value;
-    if (value !== selectedTrackFilter) {
+  const handleTrackSelect = (trackId) => {
+    if (trackId !== selectedTrackFilter) {
       resetSelectionState();
-      setSelectedTrackFilter(value);
+      setSelectedTrackFilter(trackId);
     }
+  };
+
+  const clearTrackSelection = () => {
+    resetSelectionState();
+    setSelectedTrackFilter("");
   };
 
   const handleRetry = () => {
@@ -191,31 +195,78 @@ const Home = () => {
         </div>
       </div>
 
-      <div className="max-w-md mx-auto mb-10">
-        <label htmlFor="track-select" className="block text-sm font-medium text-gray-700 mb-2">
-          Track / Event
-        </label>
-        <select
-          id="track-select"
-          value={selectedTrackFilter}
-          onChange={handleTrackChange}
-          className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={tracksLoading}
-        >
-          <option value="" disabled>
-            {tracksLoading ? "Loading tracks..." : "Select a track"}
-          </option>
-          {tracks.map((track) => (
-            <option key={track._id} value={track._id}>
-              {track.eventName || track.name}
-              {track.eventName && track.name !== track.eventName ? ` • ${track.name}` : ""}
-            </option>
-          ))}
-        </select>
-        {!tracksLoading && tracks.length === 0 && (
-          <p className="text-sm text-gray-500 mt-2">
+      <div className="max-w-5xl mx-auto mb-10">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Select Track</h3>
+            <p className="text-sm text-gray-500">Choose your event track from the cards below.</p>
+          </div>
+          {selectedTrackFilter && (
+            <button
+              type="button"
+              onClick={clearTrackSelection}
+              className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+              Clear selection
+            </button>
+          )}
+        </div>
+
+        {tracksLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, idx) => (
+              <div key={idx} className="h-28 rounded-xl border border-gray-200 bg-gray-100 animate-pulse" />
+            ))}
+          </div>
+        ) : tracks.length === 0 ? (
+          <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-gray-500">
             No tracks available yet. Please contact the administrator.
-          </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {tracks.map((track) => {
+              const isSelected = selectedTrackFilter === track._id;
+              return (
+                <button
+                  key={track._id}
+                  type="button"
+                  onClick={() => handleTrackSelect(track._id)}
+                  className={`text-left p-4 rounded-xl border transition shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isSelected
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 bg-white hover:border-blue-300"
+                  }`}
+                  aria-pressed={isSelected}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase font-semibold text-blue-600 tracking-wide">
+                        {track.name}
+                      </p>
+                      <h4 className="text-lg font-semibold text-gray-800 mt-1">
+                        {track.eventName || "Event"}
+                      </h4>
+                    </div>
+                    {isSelected && (
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                  {track.description ? (
+                    <p className="mt-3 text-sm text-gray-600">{track.description}</p>
+                  ) : (
+                    <p className="mt-3 text-sm text-gray-500">No description provided.</p>
+                  )}
+                  {track.schedule?.start && track.schedule?.end && (
+                    <p className="mt-3 text-xs text-gray-400">
+                      {new Date(track.schedule.start).toLocaleString()} — {new Date(track.schedule.end).toLocaleString()}
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
 
