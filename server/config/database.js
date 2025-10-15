@@ -6,7 +6,13 @@ const connectDB = async () => {
   if (isConnected) return; // reuse existing connection
 
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    const uri = process.env.MONGO_URI;
+
+    if (!uri) {
+      throw new Error('Missing MONGO_URI environment variable');
+    }
+
+    const conn = await mongoose.connect(uri);
     isConnected = true;
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
