@@ -14,6 +14,7 @@ connectDB();
 // ✅ CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',
+  'https://marking-web.vercel.app/'
 ]
 
 app.use(cors({
