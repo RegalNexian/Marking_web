@@ -1,10 +1,17 @@
 {
-  "buildCommand": "npm install --prefix client && npm run build --prefix client",
-  "outputDirectory": "client/dist",
-  "rewrites": [
+  "version": 2,
+  "installCommand": "npm install --prefix server",
+  "buildCommand": "",
+  "functions": {
+    "server/server.js": {
+      "runtime": "nodejs20.x",
+      "includeFiles": "server/**"
+    }
+  },
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/.*",
+      "dest": "server/server.js"
     }
   ]
 }
