@@ -5,7 +5,6 @@ const marksRoutes = require('./marksRoutes');
 const exportRoutes = require('./exportRoutes');
 const configRoutes = require('./configRoutes');
 const trackRoutes = require('./trackRoutes');
-const authRoutes = require('./authRoutes');
 
 const router = express.Router();
 
@@ -16,7 +15,6 @@ router.use('/marks', marksRoutes);
 router.use('/export', exportRoutes);
 router.use('/config', configRoutes);
 router.use('/tracks', trackRoutes);
-router.use('/auth', authRoutes);
 
 // Health check route
 router.get('/health', (req, res) => {
