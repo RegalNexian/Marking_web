@@ -246,10 +246,15 @@ const getJuryByName = async (req, res) => {
 const deleteJury = async (req, res) => {
   try {
     const { name } = req.params;
-    const jury = await Jury.findOneAndDelete({ name });
-    if (jury) {
-      await Marks.deleteMany({ juryName: name });
+    const jury = await Jury.findOne({ name });
+
+    if (!jury) {
+      return res.status(404).json({ message: 'Jury not found' });
     }
+
+    await Jury.deleteOne({ _id: jury._id });
+    await Marks.deleteMany({ juryName: name });
+
     res.json({ message: 'Jury deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

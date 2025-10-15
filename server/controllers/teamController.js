@@ -66,12 +66,38 @@ const updateTeam = async (req, res) => {
       updates.track = track._id;
     }
 
-    const team = await Team.findByIdAndUpdate(id, updates, { new: true }).populate('track');
-    
+    const team = await Team.findById(id);
+
     if (!team) {
       return res.status(404).json({ message: 'Team not found' });
     }
-    
+
+    const originalName = team.name;
+    const originalTrackId = team.track?.toString();
+
+    Object.assign(team, updates);
+    await team.save();
+    await team.populate('track');
+
+    if (updates.name !== undefined || updates.track !== undefined) {
+      const nextName = team.name;
+      const nextTrackId = team.track?._id?.toString();
+
+      const markFilter = {
+        teamName: originalName,
+        track: originalTrackId
+      };
+
+      const markUpdate = {
+        teamName: nextName
+      };
+
+      if (nextTrackId && nextTrackId !== originalTrackId) {
+        markUpdate.track = team.track._id;
+      }
+
+      await Marks.updateMany(markFilter, markUpdate);
+    }
     res.json(team);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -82,11 +108,15 @@ const updateTeam = async (req, res) => {
 const deleteTeam = async (req, res) => {
   try {
     const { id } = req.params;
-    const team = await Team.findByIdAndDelete(id);
+    const team = await Team.findById(id);
 
-    if (team) {
-      await Marks.deleteMany({ teamName: team.name, track: team.track });
+    if (!team) {
+      return res.status(404).json({ message: 'Team not found' });
     }
+
+    await Team.deleteOne({ _id: id });
+    await Marks.deleteMany({ teamName: team.name, track: team.track });
+
     res.json({ message: 'Team deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -69,12 +69,21 @@ const getCriteria = async (req, res) => {
 
 const addCriteria = async (req, res) => {
   try {
-    let { criterion } = req.body;
-    criterion = criterion.trim().toUpperCase(); // <-- ALL CAPS
+    const { criterion } = req.body || {};
+
+    if (typeof criterion !== 'string') {
+      return res.status(400).json({ message: 'criterion must be a string' });
+    }
+
+    const normalized = criterion.trim().toUpperCase();
+
+    if (!normalized) {
+      return res.status(400).json({ message: 'criterion cannot be empty' });
+    }
 
     const config = await Config.findOne() || new Config();
-    if (!config.criteria.includes(criterion)) {
-      config.criteria.push(criterion);
+    if (!config.criteria.includes(normalized)) {
+      config.criteria.push(normalized);
       await config.save();
     }
     res.json(config.criteria);

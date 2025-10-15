@@ -4,7 +4,6 @@ import { juriesAPI, tracksAPI } from "../utils/api";
 import JuryCard from "../components/JuryCard";
 import toast from "react-hot-toast";
 
-const MASTER_KEY = "CDD123"; // Master key for all juries
 
 const summarizeAssignments = (juries) => {
   let submitted = 0;
@@ -134,19 +133,11 @@ const Home = () => {
       return;
     }
 
-    const entered = rawEntry.toUpperCase();
-    const juryNameUpper = selectedJury.name.trim().toUpperCase();
-
     try {
       setPasswordError("");
       await tracksAPI.verifyPassword(selectedTrackId, rawEntry);
       navigate(`/jury/${encodeURIComponent(selectedJury.name)}/track/${selectedTrackId}`);
     } catch (err) {
-      if (entered === juryNameUpper || entered === MASTER_KEY) {
-        navigate(`/jury/${encodeURIComponent(selectedJury.name)}/track/${selectedTrackId}`);
-        return;
-      }
-
       const message = err.response?.data?.message || "Incorrect password. Please try again.";
       setPasswordError(message);
     }
@@ -189,9 +180,9 @@ const Home = () => {
           Please choose your event track before selecting your jury panel
         </p>
         <div className="bg-blue-50 border-l-4 border-blue-400 p-4 max-w-2xl mx-auto">
-          <p className="text-blue-800 text-sm">
-            <strong>Instructions:</strong> Select the track/event from the menu below, pick your jury, and enter your password (or master key) to access the marking interface.
-          </p>
+            <p className="text-blue-800 text-sm">
+              <strong>Instructions:</strong> Select the track/event from the menu below, pick your jury, and enter the assigned password to access the marking interface.
+            </p>
         </div>
       </div>
 

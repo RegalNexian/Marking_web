@@ -75,10 +75,6 @@ const AdminPage = () => {
       setTeams(teamsResponse.data);
       setConfig(configResponse.data);
       setTracks(tracksResponse.data);
-      if (!exportTrackId && tracksResponse.data.length > 0) {
-        const defaultTrack = tracksResponse.data.find(track => track.isActive) || tracksResponse.data[0];
-        setExportTrackId(defaultTrack?._id || "");
-      }
     } catch (error) {
       console.error("Failed to fetch data:", error);
       setError("Failed to load admin data. Please try again.");
@@ -349,7 +345,7 @@ const AdminPage = () => {
                   onChange={(e) => setExportTrackId(e.target.value)}
                   className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-72"
                 >
-                  <option value="" disabled>
+                  <option value="">
                     {tracks.length === 0 ? 'No tracks available' : 'Choose track'}
                   </option>
                   {tracks.map((track) => (
@@ -384,16 +380,37 @@ const AdminPage = () => {
                     Export individual jury marking sheets for each jury panel.
                   </p>
                   <div className="space-y-2">
-                    {juries.map((jury) => (
-                      <button
-                        key={jury._id}
-                        onClick={() => exportAPI.juryExcel(exportTrackId, jury.name)}
-                        disabled={!exportTrackId}
-                        className={`bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out w-full text-left ${!exportTrackId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        📄 {jury.name} Report
-                      </button>
-                    ))}
+                    {exportTrackId ? (
+                      (() => {
+                        const assignedJuries = juries.filter((jury) =>
+                          (jury.assignments || []).some(
+                            (assignment) => assignment.track && assignment.track._id === exportTrackId
+                          )
+                        );
+
+                        if (assignedJuries.length === 0) {
+                          return (
+                            <p className="text-sm text-gray-500">
+                              No juries are assigned to the selected track yet.
+                            </p>
+                          );
+                        }
+
+                        return assignedJuries.map((jury) => (
+                          <button
+                            key={jury._id}
+                            onClick={() => exportAPI.juryExcel(exportTrackId, jury.name)}
+                            className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out w-full text-left"
+                          >
+                            📄 {jury.name} Report
+                          </button>
+                        ));
+                      })()
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        Select a track to view available jury reports.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
