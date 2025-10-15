@@ -14,7 +14,8 @@ connectDB();
 // ✅ CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://marking-web.vercel.app/'
+  'https://marking-web.vercel.app',
+  'https://server-ashen-rho-94.vercel.app'
 ]
 
 app.use(cors({
