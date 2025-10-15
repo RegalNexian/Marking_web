@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "installCommand": "npm install --prefix server",
+  "installCommand": "npm install",
   "functions": {
     "server/server.js": {
       "runtime": "nodejs20.x",
