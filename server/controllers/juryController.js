@@ -7,6 +7,18 @@ const {
 
 const populateJury = (query) => query.populate('assignments.track').populate('defaultTrack');
 
+const normalizeName = (value) => String(value || '').trim();
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildNameFilter = (value) => {
+  const normalized = escapeRegex(normalizeName(value));
+  if (!normalized) {
+    return null;
+  }
+  return { name: new RegExp(`^${normalized}$`, 'i') };
+};
+
 // Get all juries
 const getAllJuries = async (req, res) => {
   try {
@@ -159,7 +171,12 @@ const updateJuryStatus = async (req, res) => {
 
     await normalizeJuries();
 
-    const jury = await Jury.findOne({ name });
+    const nameFilter = buildNameFilter(name);
+    if (!nameFilter) {
+      return res.status(400).json({ message: 'Name is required' });
+    }
+
+    const jury = await Jury.findOne(nameFilter);
     if (!jury) {
       return res.status(404).json({ message: 'Jury not found' });
     }
@@ -222,7 +239,12 @@ const getJuryByName = async (req, res) => {
 
     await normalizeJuries();
 
-    const jury = await populateJury(Jury.findOne({ name }));
+    const nameFilter = buildNameFilter(name);
+    if (!nameFilter) {
+      return res.status(400).json({ message: 'Name is required' });
+    }
+
+    const jury = await populateJury(Jury.findOne(nameFilter));
     if (!jury) {
       return res.status(404).json({ message: 'Jury not found' });
     }
@@ -230,9 +252,12 @@ const getJuryByName = async (req, res) => {
     const data = jury.toObject();
     if (trackId) {
       const track = await ensureTrackDocument(trackId);
-      const targetId = track ? track._id.toString() : String(trackId);
+      if (!track) {
+        return res.status(404).json({ message: 'Track not found' });
+      }
+
       data.assignment = data.assignments.find(
-        (assignment) => assignment.track && assignment.track._id.toString() === targetId
+        (assignment) => assignment.track && assignment.track._id.toString() === track._id.toString()
       ) || null;
     }
 
@@ -246,14 +271,19 @@ const getJuryByName = async (req, res) => {
 const deleteJury = async (req, res) => {
   try {
     const { name } = req.params;
-    const jury = await Jury.findOne({ name });
+    const nameFilter = buildNameFilter(name);
+    if (!nameFilter) {
+      return res.status(400).json({ message: 'Name is required' });
+    }
+
+    const jury = await Jury.findOne(nameFilter);
 
     if (!jury) {
       return res.status(404).json({ message: 'Jury not found' });
     }
 
     await Jury.deleteOne({ _id: jury._id });
-    await Marks.deleteMany({ juryName: name });
+    await Marks.deleteMany({ juryName: jury.name });
 
     res.json({ message: 'Jury deleted successfully' });
   } catch (error) {
