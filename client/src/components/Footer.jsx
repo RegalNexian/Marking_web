@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import Rabindra from "../assets/Rabindra.jpg"; // Your profile image
-// import baibhab from "../assets/baibhab.jpg"; // Removed unused image
 
 // The developers array now contains only your single profile
 const developers = [

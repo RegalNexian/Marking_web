@@ -41,7 +41,33 @@ const Home = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    
+    const loadTracks = async () => {
+      try {
+        setTracksLoading(true);
+        const trackResponse = await tracksAPI.getAll();
+        if (isMounted) {
+          setTracks(trackResponse.data);
+          setError("");
+        }
+      } catch (err) {
+        console.error("Failed to load tracks:", err);
+        if (isMounted) {
+          setError("Failed to load tracks. Please try again.");
+        }
+      } finally {
+        if (isMounted) {
+          setTracksLoading(false);
+        }
+      }
+    };
+    
     loadTracks();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -50,7 +76,33 @@ const Home = () => {
       return;
     }
 
+    let isMounted = true;
+
+    const loadJuries = async (trackId) => {
+      try {
+        setJuriesLoading(true);
+        const juryResponse = await juriesAPI.getAll({ trackId });
+        if (isMounted) {
+          setJuries(juryResponse.data);
+          setError("");
+        }
+      } catch (err) {
+        console.error("Failed to load juries:", err);
+        if (isMounted) {
+          setError("Failed to load juries. Please try again.");
+        }
+      } finally {
+        if (isMounted) {
+          setJuriesLoading(false);
+        }
+      }
+    };
+
     loadJuries(selectedTrackFilter);
+
+    return () => {
+      isMounted = false;
+    };
   }, [selectedTrackFilter]);
 
   const loadTracks = async () => {
@@ -149,7 +201,7 @@ const Home = () => {
 
   const handleTrackSelect = (trackId) => {
     if (trackId !== selectedTrackFilter) {
-      resetSelectionState();
+      resetSelectionState(); // This now clears password
       setSelectedTrackFilter(trackId);
     }
   };

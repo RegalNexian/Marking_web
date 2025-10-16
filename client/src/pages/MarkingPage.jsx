@@ -60,10 +60,27 @@ const MarkingPage = () => {
       setIsPaused(Boolean(assignmentData?.paused));
       setHasSubmitted(Boolean(assignmentData?.hasSubmitted));
 
-      if (serverMarks.length === 0 && storageKey) {
-        const savedMarks = localStorage.getItem(storageKey);
-        if (savedMarks) {
-          setMarks(JSON.parse(savedMarks));
+      // Only load from localStorage if no server marks and not already submitted
+      if (serverMarks.length === 0 && !assignmentData?.hasSubmitted && storageKey) {
+        try {
+          const savedMarks = localStorage.getItem(storageKey);
+          if (savedMarks) {
+            const parsedMarks = JSON.parse(savedMarks);
+            // Validate that saved marks match current teams
+            const teamNames = teamsResponse.data.map(t => t.name).sort();
+            const savedTeamNames = parsedMarks.map(m => m.teamName).sort();
+            if (JSON.stringify(teamNames) === JSON.stringify(savedTeamNames)) {
+              setMarks(parsedMarks);
+              toast.info('Draft marks restored from local storage');
+            } else {
+              // Teams have changed, clear stale draft
+              localStorage.removeItem(storageKey);
+              console.warn('Cleared stale draft - teams have changed');
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load draft from localStorage:', err);
+          localStorage.removeItem(storageKey);
         }
       }
     } catch (err) {

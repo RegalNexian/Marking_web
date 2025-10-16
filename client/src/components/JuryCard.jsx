@@ -63,7 +63,7 @@ const JuryCard = ({ jury, onSelect }) => {
           {assignments.length > 0 ? `${assignments.length} track${assignments.length > 1 ? 's' : ''} assigned` : 'No track assignments'}
         </div>
 
-        {assignments.slice(0, 3).map((assignment) => {
+        {assignments.slice(0, 3).map((assignment, idx) => {
           const status = assignment.hasSubmitted
             ? { label: 'Submitted', color: 'text-green-600' }
             : assignment.paused
@@ -72,7 +72,7 @@ const JuryCard = ({ jury, onSelect }) => {
 
           return (
             <div
-              key={`${jury._id}-${assignment.track?._id}`}
+              key={assignment.track?._id || `assignment-${idx}`}
               className="flex items-center justify-between text-sm text-gray-700 mb-2"
             >
               <span className="font-medium truncate pr-4">

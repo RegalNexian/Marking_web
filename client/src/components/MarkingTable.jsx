@@ -8,21 +8,49 @@ const MarkingTable = ({ teams, initialMarks, onSave, disabled, saving, criteria 
   const [marks, setMarks] = useState([]);
   const [criteriaList, setCriteriaList] = useState(criteria);
   const [maxMarks, setMaxMarks] = useState(20);
+  const [lastSaved, setLastSaved] = useState(null);
 
   useEffect(() => {
-    configAPI.get().then(res => {
-      const val = res.data.maxMarksPerCriterion;
-      setMaxMarks(Number(val) || 20);
-    });
+    configAPI.get()
+      .then(res => {
+        const val = res.data.maxMarksPerCriterion;
+        setMaxMarks(Number(val) || 20);
+      })
+      .catch(err => {
+        console.error('Failed to fetch max marks config:', err);
+        toast.error('Failed to load marking configuration. Using default max marks (20).');
+      });
   }, []);
 
   useEffect(() => {
     setCriteriaList(criteria);
   }, [criteria]);
 
+  // Initialize marks only once when teams or criteriaList change significantly
   useEffect(() => {
-    if (criteriaList.length === 0) return;
+    if (criteriaList.length === 0 || teams.length === 0) return;
 
+    // Only initialize if marks is empty or teams have changed
+    const teamNames = teams.map(t => t.name).sort().join(',');
+    const existingNames = marks.map(m => m.teamName).sort().join(',');
+    
+    if (teamNames === existingNames && marks.length > 0) {
+      // Teams haven't changed, just update criteria structure
+      setMarks(prevMarks => prevMarks.map(mark => {
+        const updatedCriteria = {};
+        criteriaList.forEach(criterion => {
+          updatedCriteria[criterion] = mark.criteria?.[criterion] ?? 0;
+        });
+        return {
+          ...mark,
+          criteria: updatedCriteria,
+          total: calculateTotal(updatedCriteria)
+        };
+      }));
+      return;
+    }
+
+    // Teams have changed, reinitialize
     const initializedMarks = teams.map(team => {
       const existingMark = initialMarks.find(m => m.teamName === team.name);
 
@@ -52,7 +80,7 @@ const MarkingTable = ({ teams, initialMarks, onSave, disabled, saving, criteria 
     });
 
     setMarks(initializedMarks);
-  }, [teams, initialMarks, criteriaList]);
+  }, [teams, criteriaList]); // Removed initialMarks to prevent race condition
 
   const calculateTotal = (criteriaMarks) => Object.values(criteriaMarks).reduce((sum, mark) => sum + (mark || 0), 0);
 
@@ -60,8 +88,10 @@ const MarkingTable = ({ teams, initialMarks, onSave, disabled, saving, criteria 
     if (!storageKey) return;
     try {
       localStorage.setItem(storageKey, JSON.stringify(draft));
+      setLastSaved(new Date());
     } catch (err) {
       console.warn('Failed to persist draft', err);
+      toast.error('Failed to save draft locally. Your changes may not be preserved.');
     }
   };
 
@@ -156,17 +186,10 @@ const MarkingTable = ({ teams, initialMarks, onSave, disabled, saving, criteria 
                       min="0"
                       max={maxMarks}
                       value={mark.criteria[criterion] ?? 0}
-                      onFocus={(e) => {
-                        if (e.target.value === '0') e.target.value = '';
-                      }}
-                      onBlur={(e) => {
-                        if (e.target.value === '') {
-                          handleMarkChange(index, criterion, 0);
-                        }
-                      }}
                       onChange={(e) => handleMarkChange(index, criterion, e.target.value)}
                       disabled={disabled}
                       className={`w-16 px-2 py-1 text-center border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+                      placeholder="0"
                     />
                   </td>
                 ))}
@@ -178,8 +201,13 @@ const MarkingTable = ({ teams, initialMarks, onSave, disabled, saving, criteria 
       </div>
 
       <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-        <div className="text-sm text-gray-600">
-          Teams: {marks.length} | Completed: {marks.filter(m => Object.values(m.criteria).every(v => v >= 0)).length} | Max possible total: {maxMarks * criteriaList.length}
+        <div className="text-sm text-gray-600 space-y-1">
+          <div>Teams: {marks.length} | Max possible total: {maxMarks * criteriaList.length}</div>
+          {lastSaved && (
+            <div className="text-xs text-green-600">
+              ✓ Last saved: {lastSaved.toLocaleTimeString()}
+            </div>
+          )}
         </div>
 
         <div className="flex space-x-3">
@@ -187,7 +215,7 @@ const MarkingTable = ({ teams, initialMarks, onSave, disabled, saving, criteria 
             <button
               onClick={handleSubmit}
               disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Submitting...' : '✅ Submit Final'}
             </button>

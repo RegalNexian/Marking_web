@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { juriesAPI, teamsAPI, configAPI, getCriteria, tracksAPI } from '../utils/api';
 import toast from 'react-hot-toast';
+import Swal from 'sweetalert2';
 
 const AdminPanel = ({ activeTab, juries, teams, tracks, config, onDataUpdate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -9,6 +10,7 @@ const AdminPanel = ({ activeTab, juries, teams, tracks, config, onDataUpdate }) 
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [criteriaList, setCriteriaList] = useState([]);
 
   useEffect(() => {
@@ -158,9 +160,21 @@ const AdminPanel = ({ activeTab, juries, teams, tracks, config, onDataUpdate }) 
   };
 
   const handleDelete = async (type, id, name) => {
-    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: `Do you want to delete ${name}? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
+      setDeleting(true);
       if (type === 'jury') {
         await juriesAPI.delete(name);
       } else if (type === 'team') {
@@ -168,9 +182,13 @@ const AdminPanel = ({ activeTab, juries, teams, tracks, config, onDataUpdate }) 
       } else if (type === 'track') {
         await tracksAPI.delete(id);
       }
+      toast.success(`${name} deleted successfully`);
       onDataUpdate();
     } catch (error) {
+      console.error('Delete error:', error);
       toast.error('Error: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -213,15 +231,17 @@ const AdminPanel = ({ activeTab, juries, teams, tracks, config, onDataUpdate }) 
             <div className="flex justify-between">
               <button
                 onClick={() => openModal('jury', jury)}
-                className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out text-sm"
+                disabled={deleting}
+                className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 ✏️ Edit Assignments
               </button>
               <button
                 onClick={() => handleDelete('jury', jury._id, jury.name)}
-                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out text-sm"
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                🗑️ Delete
+                {deleting ? '⌛' : '🗑️'} Delete
               </button>
             </div>
           </div>
@@ -261,8 +281,8 @@ const AdminPanel = ({ activeTab, juries, teams, tracks, config, onDataUpdate }) 
                 <td className="px-6 py-4 whitespace-nowrap text-gray-500">{team.track?.name || '—'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
                   <div className="flex justify-center space-x-2">
-                    <button onClick={() => openModal('team', team)} className="text-blue-600 hover:text-blue-800">✏️ Edit</button>
-                    <button onClick={() => handleDelete('team', team._id, team.name)} className="text-red-600 hover:text-red-800">🗑️ Delete</button>
+                    <button onClick={() => openModal('team', team)} disabled={deleting} className="text-blue-600 hover:text-blue-800 disabled:opacity-50">✏️ Edit</button>
+                    <button onClick={() => handleDelete('team', team._id, team.name)} disabled={deleting} className="text-red-600 hover:text-red-800 disabled:opacity-50">{deleting ? '⌛' : '🗑️'} Delete</button>
                   </div>
                 </td>
               </tr>
@@ -309,8 +329,8 @@ const AdminPanel = ({ activeTab, juries, teams, tracks, config, onDataUpdate }) 
                 <td className="px-6 py-4 text-gray-500">{track.description || '—'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
                   <div className="flex justify-center space-x-2">
-                    <button onClick={() => openModal('track', track)} className="text-blue-600 hover:text-blue-800">✏️ Edit</button>
-                    <button onClick={() => handleDelete('track', track._id, track.name)} className="text-red-600 hover:text-red-800">🗑️ Delete</button>
+                    <button onClick={() => openModal('track', track)} disabled={deleting} className="text-blue-600 hover:text-blue-800 disabled:opacity-50">✏️ Edit</button>
+                    <button onClick={() => handleDelete('track', track._id, track.name)} disabled={deleting} className="text-red-600 hover:text-red-800 disabled:opacity-50">{deleting ? '⌛' : '🗑️'} Delete</button>
                   </div>
                 </td>
               </tr>
