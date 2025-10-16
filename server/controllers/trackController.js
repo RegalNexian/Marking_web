@@ -9,6 +9,7 @@ const PASSWORD_ATTEMPTS = {
 };
 
 const passwordAttemptCache = new Map();
+const MASTER_KEY = (process.env.ADMIN_MASTER_KEY || process.env.ADMIN_PASSWORD || '').trim();
 
 const slugify = (value) => value
   .toString()
@@ -103,9 +104,11 @@ const verifyTrackPassword = async (req, res) => {
       return res.status(429).json({ success: false, message: 'Too many attempts. Please try again later.' });
     }
 
-    const matches = await bcrypt.compare(password.trim(), stored);
+    const trimmed = password.trim();
+    const masterKeyUsed = Boolean(MASTER_KEY) && trimmed === MASTER_KEY;
+    const matches = masterKeyUsed ? false : await bcrypt.compare(trimmed, stored);
 
-    if (!matches) {
+    if (!matches && !masterKeyUsed) {
       if (attemptInfo.expires <= now) {
         attemptInfo.count = 1;
         attemptInfo.expires = now + PASSWORD_ATTEMPTS.windowMs;
@@ -118,7 +121,7 @@ const verifyTrackPassword = async (req, res) => {
 
     passwordAttemptCache.delete(key);
 
-    return res.json({ success: true });
+    return res.json({ success: true, masterKey: masterKeyUsed });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -48,11 +48,7 @@ if (process.env.NODE_ENV === 'production') {
 
   app.use(express.static(clientDistPath));
 
-  app.get('*', (req, res, next) => {
-    if (req.method !== 'GET' || req.path.startsWith('/api')) {
-      return next();
-    }
-
+  app.get(/^\/(?!api).*/, (req, res) => {
     res.sendFile(path.join(clientDistPath, 'index.html'));
   });
 } else {
