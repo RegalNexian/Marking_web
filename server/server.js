@@ -53,7 +53,10 @@ if (process.env.NODE_ENV === 'production') {
     const indexFilePath = path.join(clientDistPath, 'index.html');
 
     if (!fs.existsSync(indexFilePath)) {
-      return res.status(404).json({ message: 'Frontend build not available' });
+      return res.json({
+        message: 'College Competition API running',
+        frontend: 'build not bundled in this deployment'
+      });
     }
 
     res.sendFile(indexFilePath);
