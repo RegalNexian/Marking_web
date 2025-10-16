@@ -10,11 +10,22 @@ const exportRoutes = require('./routes/exportRoutes');
 
 const app = express();
 
-// Connect to MongoDB (with error handling for serverless)
-connectDB().catch(err => {
-  console.error('Failed to connect to MongoDB:', err.message);
-  // Don't crash the server, let routes handle DB errors
-});
+// Database Connection Middleware - Ensure DB is connected before processing requests
+const ensureDBConnection = async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error('Database connection failed:', error.message);
+    
+    // Return user-friendly error
+    return res.status(503).json({ 
+      message: 'Database connection unavailable. Please try again in a moment.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      tip: 'If this persists, check MongoDB Atlas connection or contact administrator'
+    });
+  }
+};
 
 // ✅ CORS configuration
 const allowedOrigins = [
@@ -42,10 +53,19 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/api', apiRoutes);
-app.use('/api/config', configRoutes);
-app.use('/api/export', exportRoutes);
+// Health check endpoint (no DB required)
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    mongodb: require('mongoose').connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
+// Apply DB connection middleware to all API routes
+app.use('/api', ensureDBConnection, apiRoutes);
+app.use('/api/config', ensureDBConnection, configRoutes);
+app.use('/api/export', ensureDBConnection, exportRoutes);
 
 if (process.env.NODE_ENV === 'production') {
   const clientDistPath = path.join(__dirname, '../client/dist');
