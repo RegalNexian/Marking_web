@@ -10,14 +10,12 @@ const {
   normalizeCoreData
 } = require('../utils/trackNormalization');
 
-let coreDataPrimed = false;
-
+// Remove global state - it doesn't work in serverless
+// Each function invocation is separate
 const ensureCoreDataReady = async () => {
-  if (coreDataPrimed) {
-    return;
-  }
-  await normalizeCoreData();
-  coreDataPrimed = true;
+  // Skip normalization on every request - too slow
+  // Only normalize when creating/updating data
+  return;
 };
 
 const ensureTrack = async (trackId) => {
@@ -46,9 +44,7 @@ const saveMarks = async (req, res) => {
     const { juryName, trackId } = req.params;
     const { marks } = req.body;
 
-    await normalizeTeams();
-    await normalizeJuries();
-
+    // Skip normalization - too slow for every save
     const track = await ensureTrack(trackId);
 
     const jury = await Jury.findOne({ name: juryName });
@@ -102,8 +98,6 @@ const saveMarks = async (req, res) => {
     assignment.submittedAt = new Date();
     await jury.save();
 
-    coreDataPrimed = true;
-
     res.json({ success: true, message: 'Marks saved successfully.' });
   } catch (error) {
     const status = error.statusCode || 400;
@@ -116,7 +110,13 @@ const getMarksByJury = async (req, res) => {
   try {
     const { juryName, trackId } = req.params;
 
-    await ensureCoreDataReady();
+    if (!trackId) {
+      return res.status(400).json({ message: 'Track ID is required' });
+    }
+
+    if (!juryName) {
+      return res.status(400).json({ message: 'Jury name is required' });
+    }
 
     const track = await ensureTrack(trackId);
 
@@ -126,7 +126,7 @@ const getMarksByJury = async (req, res) => {
     }
 
     const assignment = jury.assignments.find(
-      (item) => item.track.toString() === track._id.toString()
+      (item) => item.track && item.track.toString() === track._id.toString()
     );
 
     if (!assignment) {
@@ -158,6 +158,7 @@ const getMarksByJury = async (req, res) => {
       }
     });
   } catch (err) {
+    console.error('Error in getMarksByJury:', err);
     const status = err.statusCode || 500;
     res.status(status).json({ error: err.message || 'Server error' });
   }
@@ -181,7 +182,6 @@ const resolveTrackFilter = async (trackId) => {
 const getLeaderboard = async (req, res) => {
   try {
     const { trackId } = req.query;
-    await ensureCoreDataReady();
 
     const track = await resolveTrackFilter(trackId);
 
@@ -229,8 +229,9 @@ const getLeaderboard = async (req, res) => {
       track
     });
   } catch (error) {
+    console.error('Error in getLeaderboard:', error);
     const status = error.statusCode || 500;
-    res.status(status).json({ message: error.message });
+    res.status(status).json({ message: error.message || 'Failed to load leaderboard' });
   }
 };
 
@@ -238,8 +239,6 @@ const getLeaderboard = async (req, res) => {
 const getSubmissionStatus = async (req, res) => {
   try {
     const { trackId } = req.query;
-
-    await ensureCoreDataReady();
 
     const track = trackId ? await ensureTrack(trackId) : null;
 
@@ -273,8 +272,9 @@ const getSubmissionStatus = async (req, res) => {
 
     res.json(rows);
   } catch (error) {
+    console.error('Error in getSubmissionStatus:', error);
     const status = error.statusCode || 500;
-    res.status(status).json({ message: error.message });
+    res.status(status).json({ message: error.message || 'Failed to load status' });
   }
 };
 
@@ -284,8 +284,6 @@ const getAllMarks = async (req, res) => {
     const { trackId } = req.query;
     const filter = {};
 
-    await ensureCoreDataReady();
-
     if (trackId) {
       const track = await ensureTrack(trackId);
       filter.track = track._id;
@@ -293,8 +291,9 @@ const getAllMarks = async (req, res) => {
     const marks = await Marks.find(filter);
     res.json(marks);
   } catch (error) {
+    console.error('Error in getAllMarks:', error);
     const status = error.statusCode || 500;
-    res.status(status).json({ message: error.message });
+    res.status(status).json({ message: error.message || 'Failed to load marks' });
   }
 };
 

@@ -31,10 +31,7 @@ const exportJuryExcel = async (req, res) => {
     const { juryName } = req.params;
     const { trackId } = req.query;
 
-    await normalizeTeams();
-    await normalizeJuries();
-    await normalizeMarks();
-
+    // Skip normalization - too slow for exports
     const track = await ensureTrack(trackId);
 
     const [marks, teams, jury] = await Promise.all([
@@ -124,6 +121,7 @@ const exportJuryExcel = async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
+    console.error('Error in exportJuryExcel:', error);
     res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
@@ -132,10 +130,8 @@ const exportJuryExcel = async (req, res) => {
 const exportLeaderboardExcel = async (req, res) => {
   try {
     const { trackId } = req.query;
-    await normalizeTeams();
-    await normalizeJuries();
-    await normalizeMarks();
-
+    
+    // Skip normalization - too slow for exports
     const track = await ensureTrack(trackId);
 
     const [teams, juries, allMarks] = await Promise.all([
@@ -232,6 +228,7 @@ const exportLeaderboardExcel = async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
+    console.error('Error in exportLeaderboardExcel:', error);
     res.status(error.statusCode || 500).json({ message: error.message });
   }
 };

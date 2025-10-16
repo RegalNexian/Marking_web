@@ -23,62 +23,86 @@ const ensureTrackDocument = async (rawRef) => {
     return null;
   }
 
-  if (rawRef instanceof mongoose.Model && rawRef instanceof Track) {
+  // If it's already a track document, return it
+  if (rawRef.constructor && rawRef.constructor.modelName === 'Track') {
     return rawRef;
   }
 
-  if (rawRef instanceof mongoose.Types.ObjectId) {
-    const doc = await Track.findById(rawRef.toString());
-    if (doc) {
-      return doc;
+  // Check if it's a valid ObjectId
+  if (mongoose.Types.ObjectId.isValid(rawRef)) {
+    try {
+      const doc = await Track.findById(rawRef);
+      if (doc) return doc;
+    } catch (err) {
+      console.error('Error finding track by ObjectId:', err.message);
     }
   }
 
-  if (rawRef._id) {
-    const doc = await Track.findById(rawRef._id);
-    if (doc) {
-      return doc;
+  // Handle object with _id property
+  if (rawRef._id && mongoose.Types.ObjectId.isValid(rawRef._id)) {
+    try {
+      const doc = await Track.findById(rawRef._id);
+      if (doc) return doc;
+    } catch (err) {
+      console.error('Error finding track by _id:', err.message);
     }
   }
 
+  // Convert to string for other checks
   let asString = '';
   try {
     asString = String(rawRef).trim();
   } catch (err) {
     return null;
   }
+  
   if (!asString) {
     return null;
   }
 
-  const maybeObjectId = toObjectId(asString);
-  if (maybeObjectId) {
-    const doc = await Track.findById(maybeObjectId);
-    if (doc) {
-      return doc;
+  // Try as ObjectId string
+  if (mongoose.Types.ObjectId.isValid(asString)) {
+    try {
+      const doc = await Track.findById(asString);
+      if (doc) return doc;
+    } catch (err) {
+      console.error('Error finding track by string ObjectId:', err.message);
     }
   }
 
+  // Try finding by slug or name (create slug for comparison)
   const slug = slugify(asString);
-  const track = await Track.findOne({ slug }) || await Track.findOne({ name: asString });
-  if (!track) {
+  try {
+    const track = await Track.findOne({ 
+      $or: [
+        { slug },
+        { name: asString }
+      ]
+    });
+    
+    if (!track) {
+      return null;
+    }
+
+    // Update track if needed
+    let changed = false;
+    if (!track.slug) {
+      track.slug = slug;
+      changed = true;
+    }
+    if (!track.eventName) {
+      track.eventName = track.name;
+      changed = true;
+    }
+    if (changed) {
+      await track.save().catch(err => console.error('Error saving track:', err.message));
+    }
+
+    return track;
+  } catch (err) {
+    console.error('Error finding track by slug/name:', err.message);
     return null;
   }
-
-  let changed = false;
-  if (!track.slug) {
-    track.slug = slug;
-    changed = true;
-  }
-  if (!track.eventName) {
-    track.eventName = track.name;
-    changed = true;
-  }
-  if (changed) {
-    await track.save();
-  }
-
-  return track;
 };
 
 const defaultTrackName = process.env.DEFAULT_TRACK_NAME || 'Default Track';

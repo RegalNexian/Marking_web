@@ -29,6 +29,7 @@ const getAllTracks = async (req, res) => {
     const tracks = await Track.find(filters).sort({ createdAt: 1 }).select('-accessPassword');
     res.json(tracks);
   } catch (error) {
+    console.error('Error in getAllTracks:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -41,6 +42,7 @@ const getTrackById = async (req, res) => {
     }
     res.json(track);
   } catch (error) {
+    console.error('Error in getTrackById:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -72,6 +74,7 @@ const createTrack = async (req, res) => {
     delete created.accessPassword;
     res.status(201).json(created);
   } catch (error) {
+    console.error('Error in createTrack:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -123,6 +126,7 @@ const verifyTrackPassword = async (req, res) => {
 
     return res.json({ success: true, masterKey: masterKeyUsed });
   } catch (error) {
+    console.error('Error in verifyTrackPassword:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -155,6 +159,7 @@ const updateTrack = async (req, res) => {
 
     res.json(track);
   } catch (error) {
+    console.error('Error in updateTrack:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -181,6 +186,7 @@ const deleteTrack = async (req, res) => {
 
     res.json({ message: 'Track deleted successfully' });
   } catch (error) {
+    console.error('Error in deleteTrack:', error);
     res.status(500).json({ message: error.message });
   }
 };

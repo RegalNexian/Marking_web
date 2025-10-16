@@ -32,11 +32,11 @@ const getAllJuries = async (req, res) => {
       filter['assignments.track'] = track._id;
     }
 
-    await normalizeJuries();
-
+    // Skip normalization - too slow for GET requests
     const juries = await populateJury(Jury.find(filter).sort({ name: 1 }));
     res.json(juries);
   } catch (error) {
+    console.error('Error in getAllJuries:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -97,8 +97,7 @@ const updateJuryAssignments = async (req, res) => {
     const { id } = req.params;
     const { trackIds = [], defaultTrackId } = req.body;
 
-    await normalizeJuries();
-
+    // Skip normalization - not needed for updates
     const jury = await Jury.findById(id);
     if (!jury) {
       return res.status(404).json({ message: 'Jury not found' });
@@ -169,8 +168,7 @@ const updateJuryStatus = async (req, res) => {
       return res.status(400).json({ message: 'trackId is required' });
     }
 
-    await normalizeJuries();
-
+    // Skip normalization - not needed for status updates
     const nameFilter = buildNameFilter(name);
     if (!nameFilter) {
       return res.status(400).json({ message: 'Name is required' });
@@ -237,8 +235,7 @@ const getJuryByName = async (req, res) => {
     const { name } = req.params;
     const { trackId } = req.query;
 
-    await normalizeJuries();
-
+    // Skip normalization - too slow for GET requests
     const nameFilter = buildNameFilter(name);
     if (!nameFilter) {
       return res.status(400).json({ message: 'Name is required' });
@@ -263,6 +260,7 @@ const getJuryByName = async (req, res) => {
 
     res.json(data);
   } catch (error) {
+    console.error('Error in getJuryByName:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -287,6 +285,7 @@ const deleteJury = async (req, res) => {
 
     res.json({ message: 'Jury deleted successfully' });
   } catch (error) {
+    console.error('Error in deleteJury:', error);
     res.status(500).json({ message: error.message });
   }
 };

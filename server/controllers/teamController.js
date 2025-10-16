@@ -18,11 +18,11 @@ const getAllTeams = async (req, res) => {
       filter.track = track._id;
     }
 
-    await normalizeTeams();
-
+    // Skip normalization - too slow
     const teams = await Team.find(filter).populate('track');
     res.json(teams);
   } catch (error) {
+    console.error('Error in getAllTeams:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -45,6 +45,7 @@ const createTeam = async (req, res) => {
     await team.save();
     res.status(201).json(team);
   } catch (error) {
+    console.error('Error in createTeam:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -100,6 +101,7 @@ const updateTeam = async (req, res) => {
     }
     res.json(team);
   } catch (error) {
+    console.error('Error in updateTeam:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -119,6 +121,7 @@ const deleteTeam = async (req, res) => {
 
     res.json({ message: 'Team deleted successfully' });
   } catch (error) {
+    console.error('Error in deleteTeam:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -142,6 +145,7 @@ const getTeamByName = async (req, res) => {
     }
     res.json(team);
   } catch (error) {
+    console.error('Error in getTeamByName:', error);
     res.status(500).json({ message: error.message });
   }
 };

@@ -10,8 +10,11 @@ const exportRoutes = require('./routes/exportRoutes');
 
 const app = express();
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB (with error handling for serverless)
+connectDB().catch(err => {
+  console.error('Failed to connect to MongoDB:', err.message);
+  // Don't crash the server, let routes handle DB errors
+});
 
 // ✅ CORS configuration
 const allowedOrigins = [
@@ -75,13 +78,43 @@ if (process.env.NODE_ENV === 'production') {
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+  console.error('Error:', err.stack);
+  
+  // Handle specific error types
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({ 
+      message: 'Validation Error', 
+      errors: err.errors 
+    });
+  }
+  
+  if (err.name === 'CastError') {
+    return res.status(400).json({ 
+      message: 'Invalid ID format' 
+    });
+  }
+  
+  if (err.code === 11000) {
+    return res.status(409).json({ 
+      message: 'Duplicate entry - this record already exists' 
+    });
+  }
+
+  // Default error
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({ 
+    message: err.message || 'Something went wrong!',
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+  });
 });
 
-// 404 handler
+// 404 handler - MUST be after all other routes
 app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
+  res.status(404).json({ 
+    message: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
 });
 
 if (require.main === module) {

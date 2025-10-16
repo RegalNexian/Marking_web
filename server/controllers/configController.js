@@ -20,6 +20,7 @@ const getConfig = async (req, res) => {
       maxMarksPerCriterion: Number(config.maxMarksPerCriterion) || 20
     });
   } catch (error) {
+    console.error('Error in getConfig:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -53,6 +54,7 @@ const updateConfig = async (req, res) => {
     await config.save();
     res.json(config);
   } catch (error) {
+    console.error('Error in updateConfig:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -63,6 +65,7 @@ const getCriteria = async (req, res) => {
     const config = await Config.findOne();
     res.json(config?.criteria || []);
   } catch (error) {
+    console.error('Error in getCriteria:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -88,6 +91,7 @@ const addCriteria = async (req, res) => {
     }
     res.json(config.criteria);
   } catch (error) {
+    console.error('Error in addCriteria:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -102,6 +106,7 @@ const removeCriteria = async (req, res) => {
     await config.save();
     res.json(config.criteria);
   } catch (error) {
+    console.error('Error in removeCriteria:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -124,6 +129,7 @@ const resetAll = async (req, res) => {
     }
     res.json({ success: true, message: 'All data reset.' });
   } catch (error) {
+    console.error('Error in resetAll:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
