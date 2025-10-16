@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/database');
 const apiRoutes = require('./routes');
 const configRoutes = require('./routes/configRoutes');
@@ -49,7 +50,13 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(clientDistPath));
 
   app.get(/^\/(?!api).*/, (req, res) => {
-    res.sendFile(path.join(clientDistPath, 'index.html'));
+    const indexFilePath = path.join(clientDistPath, 'index.html');
+
+    if (!fs.existsSync(indexFilePath)) {
+      return res.status(404).json({ message: 'Frontend build not available' });
+    }
+
+    res.sendFile(indexFilePath);
   });
 } else {
   // Root route (dev only)
