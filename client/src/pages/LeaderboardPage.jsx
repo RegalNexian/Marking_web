@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { marksAPI, exportAPI, tracksAPI } from '../utils/api';
 import LeaderboardTable from '../components/LeaderboardTable';
 import { GiTrophy } from 'react-icons/gi';
@@ -12,30 +12,13 @@ const LeaderboardPage = () => {
   const [tracks, setTracks] = useState([]);
   const [selectedTrackId, setSelectedTrackId] = useState('');
 
-  useEffect(() => {
-    loadInitial();
-
-    const interval = setInterval(() => fetchLeaderboard(selectedTrackId, true), 30000);
-    return () => clearInterval(interval);
-  }, [selectedTrackId]);
-
-  const loadInitial = async () => {
-    try {
-      setLoading(true);
-      const trackResponse = await tracksAPI.getAll();
-      setTracks(trackResponse.data);
-      const defaultTrack = trackResponse.data.find(track => track.isActive) || trackResponse.data[0];
-      const defaultId = defaultTrack?._id || '';
-      setSelectedTrackId(defaultId);
-      await fetchLeaderboard(defaultId);
-    } catch (err) {
-      console.error('Failed to load leaderboard:', err);
-      setError('Failed to load leaderboard. Please try again.');
+  const fetchLeaderboard = useCallback(async (trackId, isAuto = false) => {
+    if (!trackId) {
+      setLeaderboardData({ leaderboard: [], juries: [], track: null });
       setLoading(false);
+      setRefreshing(false);
+      return;
     }
-  };
-
-  const fetchLeaderboard = async (trackId, isAuto = false) => {
     try {
       if (!isAuto) {
         setLoading(true);
@@ -50,7 +33,37 @@ const LeaderboardPage = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  const loadInitial = useCallback(async () => {
+    try {
+      setLoading(true);
+      const trackResponse = await tracksAPI.getAll();
+      setTracks(trackResponse.data);
+      const defaultTrack = trackResponse.data.find(track => track.isActive) || trackResponse.data[0];
+      const defaultId = defaultTrack?._id || '';
+      setSelectedTrackId(defaultId);
+      if (defaultId) {
+        await fetchLeaderboard(defaultId);
+      } else {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Failed to load leaderboard:', err);
+      setError('Failed to load leaderboard. Please try again.');
+      setLoading(false);
+    }
+  }, [fetchLeaderboard]);
+
+  useEffect(() => {
+    loadInitial();
+  }, [loadInitial]);
+
+  useEffect(() => {
+    if (!selectedTrackId) return undefined;
+    const interval = setInterval(() => fetchLeaderboard(selectedTrackId, true), 30000);
+    return () => clearInterval(interval);
+  }, [selectedTrackId, fetchLeaderboard]);
 
   const handleRefresh = () => {
     setRefreshing(true);

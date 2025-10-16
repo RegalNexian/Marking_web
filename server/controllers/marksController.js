@@ -7,8 +7,18 @@ const {
   ensureTrackDocument,
   normalizeTeams,
   normalizeJuries,
-  normalizeMarks
+  normalizeCoreData
 } = require('../utils/trackNormalization');
+
+let coreDataPrimed = false;
+
+const ensureCoreDataReady = async () => {
+  if (coreDataPrimed) {
+    return;
+  }
+  await normalizeCoreData();
+  coreDataPrimed = true;
+};
 
 const ensureTrack = async (trackId) => {
   if (!trackId) {
@@ -92,6 +102,8 @@ const saveMarks = async (req, res) => {
     assignment.submittedAt = new Date();
     await jury.save();
 
+    coreDataPrimed = true;
+
     res.json({ success: true, message: 'Marks saved successfully.' });
   } catch (error) {
     const status = error.statusCode || 400;
@@ -104,9 +116,7 @@ const getMarksByJury = async (req, res) => {
   try {
     const { juryName, trackId } = req.params;
 
-    await normalizeTeams();
-    await normalizeJuries();
-    await normalizeMarks();
+    await ensureCoreDataReady();
 
     const track = await ensureTrack(trackId);
 
@@ -171,9 +181,7 @@ const resolveTrackFilter = async (trackId) => {
 const getLeaderboard = async (req, res) => {
   try {
     const { trackId } = req.query;
-    await normalizeTeams();
-    await normalizeJuries();
-    await normalizeMarks();
+    await ensureCoreDataReady();
 
     const track = await resolveTrackFilter(trackId);
 
@@ -182,9 +190,9 @@ const getLeaderboard = async (req, res) => {
     }
 
     const [teams, juries, allMarks] = await Promise.all([
-      Team.find({ track: track._id }),
-      Jury.find({ 'assignments.track': track._id }),
-      Marks.find({ track: track._id })
+      Team.find({ track: track._id }).lean(),
+      Jury.find({ 'assignments.track': track._id }).lean(),
+      Marks.find({ track: track._id }).lean()
     ]);
 
     const leaderboard = teams.map((team) => {
@@ -231,13 +239,13 @@ const getSubmissionStatus = async (req, res) => {
   try {
     const { trackId } = req.query;
 
-    await normalizeTeams();
-    await normalizeJuries();
-    await normalizeMarks();
+    await ensureCoreDataReady();
 
     const track = trackId ? await ensureTrack(trackId) : null;
 
-    const juries = await Jury.find(track ? { 'assignments.track': track._id } : {}).populate('assignments.track');
+    const juries = await Jury.find(track ? { 'assignments.track': track._id } : {})
+      .populate('assignments.track')
+      .lean();
 
     const rows = [];
 
@@ -276,7 +284,7 @@ const getAllMarks = async (req, res) => {
     const { trackId } = req.query;
     const filter = {};
 
-    await normalizeMarks();
+    await ensureCoreDataReady();
 
     if (trackId) {
       const track = await ensureTrack(trackId);

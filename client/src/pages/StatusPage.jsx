@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { marksAPI, tracksAPI } from '../utils/api';
 import StatusBoard from '../components/StatusBoard';
 
@@ -10,33 +10,13 @@ const StatusPage = () => {
   const [tracks, setTracks] = useState([]);
   const [selectedTrackId, setSelectedTrackId] = useState('');
 
-  useEffect(() => {
-    fetchInitial();
-
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(() => fetchStatus(selectedTrackId, true), 10000);
-    return () => clearInterval(interval);
-  }, [selectedTrackId]);
-
-  const fetchInitial = async () => {
-    try {
-      setLoading(true);
-      const [trackResponse] = await Promise.all([
-        tracksAPI.getAll(),
-      ]);
-      setTracks(trackResponse.data);
-      const defaultTrack = trackResponse.data.find(track => track.isActive) || trackResponse.data[0];
-      const defaultId = defaultTrack?._id || '';
-      setSelectedTrackId(defaultId);
-      await fetchStatus(defaultId, false);
-    } catch (err) {
-      console.error('Failed to load status data:', err);
-      setError('Failed to load status data. Please try again.');
+  const fetchStatus = useCallback(async (trackId, isAuto = false) => {
+    if (!trackId) {
+      setStatusData([]);
       setLoading(false);
+      setRefreshing(false);
+      return;
     }
-  };
-
-  const fetchStatus = async (trackId, isAuto = false) => {
     try {
       if (!isAuto) {
         setLoading(true);
@@ -51,7 +31,39 @@ const StatusPage = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  const fetchInitial = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [trackResponse] = await Promise.all([
+        tracksAPI.getAll(),
+      ]);
+      setTracks(trackResponse.data);
+      const defaultTrack = trackResponse.data.find(track => track.isActive) || trackResponse.data[0];
+      const defaultId = defaultTrack?._id || '';
+      setSelectedTrackId(defaultId);
+      if (defaultId) {
+        await fetchStatus(defaultId, false);
+      } else {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Failed to load status data:', err);
+      setError('Failed to load status data. Please try again.');
+      setLoading(false);
+    }
+  }, [fetchStatus]);
+
+  useEffect(() => {
+    fetchInitial();
+  }, [fetchInitial]);
+
+  useEffect(() => {
+    if (!selectedTrackId) return undefined;
+    const interval = setInterval(() => fetchStatus(selectedTrackId, true), 10000);
+    return () => clearInterval(interval);
+  }, [selectedTrackId, fetchStatus]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -84,7 +96,7 @@ const StatusPage = () => {
       <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
         <p className="text-red-800">{error}</p>
         <button
-          onClick={fetchStatus}
+          onClick={() => fetchStatus(selectedTrackId)}
           className="mt-2 text-red-600 hover:text-red-800 font-medium"
         >
           Try Again
