@@ -150,9 +150,6 @@ const StatusPage = () => {
                 )}
               </button>
               
-              <div className="text-sm text-gray-500">
-                Auto-refresh: 10s
-              </div>
             </div>
           </div>
         </div>
@@ -230,7 +227,6 @@ const StatusPage = () => {
         <div className="bg-gray-50 p-4 border-t border-gray-200">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>Last updated: {new Date().toLocaleString()}</span>
-            <span>🔄 Auto-refreshing every 10 seconds</span>
           </div>
         </div>
       </div>
