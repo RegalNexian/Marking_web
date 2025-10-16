@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/database');
 const apiRoutes = require('./routes');
 const configRoutes = require('./routes/configRoutes');
@@ -42,15 +43,29 @@ app.use('/api', apiRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/export', exportRoutes);
 
-// Root route
-app.get('/', (req, res) => {
-  res.json({
-    message: '🏫 College Competition Marking & Leaderboard System API',
-    version: '1.0.0',
-    status: 'Running',
-    developer: 'K Rabindra Nath Senapaty'
+if (process.env.NODE_ENV === 'production') {
+  const clientDistPath = path.join(__dirname, '../client/dist');
+
+  app.use(express.static(clientDistPath));
+
+  app.get('*', (req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api')) {
+      return next();
+    }
+
+    res.sendFile(path.join(clientDistPath, 'index.html'));
   });
-});
+} else {
+  // Root route (dev only)
+  app.get('/', (req, res) => {
+    res.json({
+      message: '🏫 College Competition Marking & Leaderboard System API',
+      version: '1.0.0',
+      status: 'Running',
+      developer: 'K Rabindra Nath Senapaty'
+    });
+  });
+}
 
 // Error handling
 app.use((err, req, res, next) => {
