@@ -1,10 +1,14 @@
 {
   "version": 2,
-  "installCommand": "npm install",
+  "installCommand": "npm install --prefix server && npm install --prefix client",
+  "buildCommand": "npm run build --prefix client",
   "functions": {
     "server/server.js": {
       "runtime": "nodejs20.x",
-      "includeFiles": "server/**"
+      "includeFiles": [
+        "server/**",
+        "client/dist/**"
+      ]
     }
   },
   "routes": [
