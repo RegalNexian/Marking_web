@@ -1,0 +1,546 @@
+{
+  "info": {
+    "name": "College Competition Marking API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "00000000-0000-0000-0000-000000000000"
+  },
+  "item": [
+    {
+      "name": "Config",
+      "item": [
+        {
+          "name": "Get Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/config",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "config"]
+            }
+          }
+        },
+        {
+          "name": "Update Config",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"criteriaList\": [\"INNOVATION\", \"IMPACT\"],\n  \"maxMarksPerCriterion\": 20,\n  \"competitionName\": \"College Competition\",\n  \"collegeName\": \"ABC College\",\n  \"clubName\": \"Coding Club\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/config",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "config"]
+            }
+          }
+        },
+        {
+          "name": "Get Criteria",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/config/criteria",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "config", "criteria"]
+            }
+          }
+        },
+        {
+          "name": "Add Criterion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"criterion\": \"PRESENTATION\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/config/criteria",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "config", "criteria"]
+            }
+          }
+        },
+        {
+          "name": "Remove Criterion",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"index\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/config/criteria",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "config", "criteria"]
+            }
+          }
+        },
+        {
+          "name": "Reset All",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/config/reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "config", "reset"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tracks",
+      "item": [
+        {
+          "name": "Get Tracks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tracks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tracks"]
+            }
+          }
+        },
+        {
+          "name": "Create Track",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"AI Innovations\",\n  \"eventName\": \"AI Summit\",\n  \"description\": \"AI track\",\n  \"schedule\": {},\n  \"isActive\": true,\n  \"accessPassword\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tracks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tracks"]
+            }
+          }
+        },
+        {
+          "name": "Get Track by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tracks/{{trackId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tracks", "{{trackId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Track",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"AI Innovations Updated\",\n  \"eventName\": \"AI Summit 2025\",\n  \"description\": \"Updated description\",\n  \"schedule\": {},\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tracks/{{trackId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tracks", "{{trackId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Track",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tracks/{{trackId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tracks", "{{trackId}}"]
+            }
+          }
+        },
+        {
+          "name": "Verify Track Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tracks/{{trackId}}/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tracks", "{{trackId}}", "verify"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Juries",
+      "item": [
+        {
+          "name": "Get Juries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/juries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "juries"]
+            }
+          }
+        },
+        {
+          "name": "Create Jury",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jury 1\",\n  \"trackIds\": [\"{{trackId}}\"],\n  \"defaultTrackId\": \"{{trackId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/juries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "juries"]
+            }
+          }
+        },
+        {
+          "name": "Update Jury Assignments",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trackIds\": [\"{{trackId}}\"],\n  \"defaultTrackId\": \"{{trackId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/juries/{{juryId}}/assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "juries", "{{juryId}}", "assignments"]
+            }
+          }
+        },
+        {
+          "name": "Get Jury By Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/juries/{{juryName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "juries", "{{juryName}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Jury Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trackId\": \"{{trackId}}\",\n  \"hasSubmitted\": true,\n  \"paused\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/juries/{{juryName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "juries", "{{juryName}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Jury",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/juries/{{juryName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "juries", "{{juryName}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Teams",
+      "item": [
+        {
+          "name": "Get Teams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teams"]
+            }
+          }
+        },
+        {
+          "name": "Create Team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Team Alpha\",\n  \"category\": \"Senior\",\n  \"trackId\": \"{{trackId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/teams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teams"]
+            }
+          }
+        },
+        {
+          "name": "Get Team By Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/name/{{teamName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teams", "name", "{{teamName}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Team",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Team Alpha Updated\",\n  \"category\": \"Junior\",\n  \"trackId\": \"{{trackId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teams", "{{teamId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Team",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teams", "{{teamId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Marks",
+      "item": [
+        {
+          "name": "Get Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/marks/leaderboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "marks", "leaderboard"]
+            }
+          }
+        },
+        {
+          "name": "Get Submission Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/marks/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "marks", "status"]
+            }
+          }
+        },
+        {
+          "name": "Get All Marks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/marks/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "marks", "all"]
+            }
+          }
+        },
+        {
+          "name": "Save Marks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"marks\": [\n    {\n      \"teamName\": \"Team Alpha\",\n      \"criteria\": {\n        \"INNOVATION\": 8,\n        \"IMPACT\": 9\n      }\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/marks/track/{{trackId}}/jury/{{juryName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "marks", "track", "{{trackId}}", "jury", "{{juryName}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Marks By Jury",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/marks/track/{{trackId}}/jury/{{juryName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "marks", "track", "{{trackId}}", "jury", "{{juryName}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Export",
+      "item": [
+        {
+          "name": "Export Jury Excel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/export/jury/{{juryName}}?trackId={{trackId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "export", "jury", "{{juryName}}"],
+              "query": [
+                {
+                  "key": "trackId",
+                  "value": "{{trackId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export Leaderboard Excel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/export/leaderboard?trackId={{trackId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "export", "leaderboard"],
+              "query": [
+                {
+                  "key": "trackId",
+                  "value": "{{trackId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "trackId",
+      "value": "000000000000000000000001"
+    },
+    {
+      "key": "juryId",
+      "value": "000000000000000000000002"
+    },
+    {
+      "key": "juryName",
+      "value": "Jury 1"
+    },
+    {
+      "key": "teamId",
+      "value": "000000000000000000000003"
+    },
+    {
+      "key": "teamName",
+      "value": "Team Alpha"
+    }
+  ]
+}
